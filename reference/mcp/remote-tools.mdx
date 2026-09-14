@@ -1,5 +1,5 @@
 ---
-title: "MCP Remote Tools Reference for Hub"
+title: "Hub MCP Remote Tools — All 36 Remote Tool Descriptions"
 sidebarTitle: "Remote Tools"
 description: "Complete reference for the 36 tools available in remote MCP mode — manage apps, teams, releases, and deployments on your hosted Hub instance."
 ---
@@ -20,6 +20,14 @@ Use `--scope` to limit what the token (and therefore your agent) can do:
 action-platform login https://<your-platform> --scope read           # read-only assistant
 action-platform login https://<your-platform> --scope read,write,release  # ships, but cannot manage org
 ```
+
+<Note>
+  The remote MCP server automatically sends the MCP client's name
+  (`clientInfo`) with every authenticated request. Hub's **Connected apps**
+  view uses this to show whether a token was used by Claude Code, Codex,
+  Cursor, or another MCP client — so you always know which AI agent made a
+  change.
+</Note>
 
 ## Tools
 

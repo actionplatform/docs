@@ -44,7 +44,7 @@ A scope never widens a role: a `developer` with a `release`-scoped token still c
 
 Each Hub component ships independently and carries its own version. Before a major upgrade, check version compatibility:
 
-```bash
+```
 GET /api/version
 ```
 
@@ -58,6 +58,22 @@ GET /api/version
 ```
 
 The `version` field is the platform version; `api` is the API component version. If the web app and API versions diverge significantly, consult the upgrade notes before proceeding.
+
+## Template matrix
+
+```
+GET /api/matrix
+```
+
+Returns the full template matrix — every supported stack, app type, and template available when running `action-platform init`. Pass a `sources` array in the body (`POST /api/matrix`) to merge in custom template repositories.
+
+## Git-flow rules
+
+```
+GET /api/gitflow/rules
+```
+
+Returns the git-flow branch naming rules and patterns Hub enforces across all apps.
 
 ## Errors
 
@@ -73,7 +89,7 @@ Hub returns standard HTTP status codes. Errors from application logic carry a JS
 | `410` | Gone — resource has been removed |
 | `422` | `{"code": "needs_install"}` — the repository has no `platform.toml`; run install first |
 | `429` | Rate limit exceeded (10 sign-in attempts per minute per IP) |
-| `500` | Unexpected error — reported to Sentry if `AP_SENTRY_DSN` is configured |
+| `500` | Unexpected server error |
 
 All error responses share the shape `{"detail": "…", "error": "…", "error_description": "…"}`.
 
@@ -126,11 +142,11 @@ GET /api/v1/jobs/{id}
 ### List jobs for an app
 
 ```
-GET /api/v1/jobs?app=<registry-id>
+GET /api/v1/jobs?app=<app-id>
 ```
 
 Returns the last 20 jobs for the given app. If you submit a second async `sync` for the same app while one is already running, Hub returns the live job rather than creating a duplicate.
 
 <Note>
-  `GET /api/version`, `GET /docs`, and `GET /openapi.json` are public and require no authentication. Every other route requires a valid session or Bearer token.
+  `GET /api/version`, `GET /api/matrix`, `GET /api/gitflow/rules`, `GET /docs`, and `GET /openapi.json` are public and require no authentication. Every other route requires a valid session or Bearer token.
 </Note>

@@ -23,6 +23,8 @@ environment variable and a value in the credentials file are present, the enviro
 | `AP_HOME` | Directory where the CLI stores credentials and the API stores workspaces. Defaults to `~/.action-platform`. |
 | `AP_SERVER` | URL of the Hub platform to connect to. Overrides the server recorded in the credentials file. |
 | `AP_TOKEN` | Bearer token to use for authentication. Overrides the token recorded in the credentials file. Use together with `AP_SERVER`. |
+| `AP_GIT_AUTHOR_NAME` | Name used as the Git commit author when the CLI creates commits on your behalf. Defaults to `Action Platform`. |
+| `AP_GIT_AUTHOR_EMAIL` | Email used as the Git commit author when the CLI creates commits on your behalf. Defaults to `cloud@actionplatform.io`. |
 | `AP_SENTRY_DSN` | Sentry DSN for CLI crash reporting. Has no effect unless the `sentry` extra is installed. Optional — see [Optional extras](#optional-extras) below. |
 
 ---

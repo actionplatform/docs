@@ -20,6 +20,10 @@ pip install action-platform
 ```bash pip with MCP server
 pip install "action-platform[mcp]"
 ```
+
+```bash pip with JSON API server
+pip install "action-platform[api]"
+```
 </CodeGroup>
 
 <Tip>
@@ -147,7 +151,7 @@ These commands interact with the Hub platform itself — the API, MCP server, an
 
 | Command | What it does |
 |---|---|
-| `action-platform api` | Start the JSON API server (port 7788, OpenAPI at `/docs`) that the web app uses |
+| `action-platform api [--reload] [--host HOST] [--port PORT] [--cors]` | Start the JSON API server (port 7788, OpenAPI at `/docs`) that the web app uses |
 | `action-platform mcp` | Start the MCP server in stdio mode for AI agent integration |
 | `action-platform mcp --http` | Start the MCP server over HTTP at `http://127.0.0.1:8765/mcp` |
 | `action-platform mcp --remote` | Connect to the MCP tools exposed by a hosted Hub instance |
@@ -178,6 +182,25 @@ action-platform mcp --remote
 4. Every subsequent CLI and MCP call sends `Authorization: Bearer <token>` automatically.
 
 `action-platform whoami` prints the server, your account, the token's scope, and exactly where it can act. Manage and revoke tokens from **Connected apps** in the web app (key icon next to your name).
+
+## Environment variables
+
+Use these variables to configure the CLI without editing files — especially useful in CI pipelines and containers.
+
+| Variable | Purpose |
+|---|---|
+| `ACTION_PLATFORM_GITHUB_TOKEN` / `GH_TOKEN` | GitHub token when the `gh` CLI is not available |
+| `ACTION_PLATFORM_GITLAB_TOKEN` / `GITLAB_TOKEN` | GitLab personal access token |
+| `ACTION_PLATFORM_BITBUCKET_TOKEN` | Bitbucket app password |
+| `ACTION_PLATFORM_BITBUCKET_USERNAME` | Bitbucket username (required with the token above) |
+| `ACTION_PLATFORM_TEMPLATES` | Path to a local checkout of the templates repository |
+| `ACTION_PLATFORM_TEMPLATES_REPO` | URL of a custom templates repository |
+| `AP_HOME` | Directory where the CLI stores credentials and workspaces (default: `~/.action-platform`) |
+| `AP_SERVER` | Hosted Hub instance URL — overrides the credentials file |
+| `AP_TOKEN` | Bearer token — overrides the credentials file |
+| `AP_GIT_AUTHOR_NAME` | Name for commits made by the CLI when no identity is configured |
+| `AP_GIT_AUTHOR_EMAIL` | Email for commits made by the CLI when no identity is configured |
+| `AP_SENTRY_DSN` | Sentry DSN for CLI error reporting (requires `pip install "action-platform[sentry]"`) |
 
 <Tip>
   Set `AP_SERVER` and `AP_TOKEN` as environment variables to override the credentials file — useful in CI pipelines or containers where you can't write to the home directory.

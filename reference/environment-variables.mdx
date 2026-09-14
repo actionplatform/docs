@@ -63,6 +63,23 @@ Use these variables to authenticate against a source host instead of relying on 
 
 ---
 
+## Commit identity
+
+<ParamField path="AP_GIT_AUTHOR_NAME" type="string" default="Action Platform">
+  Name used as the Git author and committer on commits created by the CLI or
+  MCP server (for example, release commits and configuration changes). Override
+  this when you want a specific identity recorded in your repository history
+  instead of the default service account name.
+</ParamField>
+
+<ParamField path="AP_GIT_AUTHOR_EMAIL" type="string" default="cloud@actionplatform.io">
+  Email address used as the Git author and committer on commits created by the
+  CLI or MCP server. Set this together with `AP_GIT_AUTHOR_NAME` to attribute
+  automated commits to a team address or a no-reply address in your domain.
+</ParamField>
+
+---
+
 ## Templates
 
 <ParamField path="ACTION_PLATFORM_TEMPLATES" type="string">

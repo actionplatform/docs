@@ -99,7 +99,7 @@ These are the containers Hub runs. You interact with Hub through the browser and
 | `api` | `actionplatformio/action-platform-api` | Python API; stateless — clones are created in a temp dir per request |
 | `worker` | `actionplatformio/action-platform-api` | Same image, runs `action-platform worker`; handles queued syncs, releases, and deploys |
 | `web` | `actionplatformio/action-platform-web` | Next.js front end; stateless; listens on port 3000 |
-| `traefik` | `traefik:v3.3` | Reverse proxy and TLS termination; only included with `--profile tls` (plain HTTP install) or Dokploy's built-in Traefik |
+| `traefik` | `traefik:v3.3` | Reverse proxy and TLS termination; included only when you supply a domain at install time (`--profile tls`). Dokploy installations use Dokploy's built-in Traefik instead. |
 
 ## First-run setup wizard
 

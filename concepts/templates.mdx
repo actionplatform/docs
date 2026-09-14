@@ -1,7 +1,7 @@
 ---
-title: "Project Templates: Every Stack, Production-Ready"
+title: "Project Templates: Every Stack, Production-Ready on Day One"
 sidebarTitle: "Templates"
-description: "Hub ships templates for web apps, libraries, automation, docs, and plugins — each production-ready with tests, lint, CI, and a platform.toml out of the box."
+description: "Hub ships templates for web apps, libraries, automation, docs, and plugins — each production-ready with tests, lint, CI, and a platform.toml included."
 ---
 
 Hub ships templates for every common stack. Each one is a plain [cookiecutter](https://cookiecutter.readthedocs.io/) that renders into a fully wired project: `platform.toml`, code quality configuration, an `AGENTS.md`, tests, and a CI pipeline for your chosen provider. Pick a cloud overlay and a service, and the template composes them together before you write a single line of business logic.
@@ -44,28 +44,28 @@ Hub ships templates for every common stack. Each one is a plain [cookiecutter](h
 
 ### Other types
 
-| Type | Stack | Description |
-|------|-------|-------------|
-| `docs` | MkDocs | MkDocs Material theme, strict build in CI |
-| `plugin` | Chrome | Manifest V3, popup, background service, tests, store zip |
-| `empty` | — | `platform.toml` + `.code_quality/` only |
+| Type | Stack | Template | Description |
+|------|-------|----------|-------------|
+| `docs` | MkDocs | `material` | MkDocs Material theme, strict build in CI |
+| `plugin` | Chrome | `vanilla` | Chrome extension, Manifest V3, no bundler |
+| `empty` | — | — | `platform.toml` + `.code_quality/` only |
 
 ## Cloud overlays
 
 Cloud overlays layer deployment infrastructure on top of any compatible template. You choose a base template first, then add an overlay.
 
-| Overlay | Adds |
-|---------|------|
-| `aws/lambda` | SAM template, HTTP API Gateway, custom domain config, deploy workflow, IAM policy |
-| `aws/amplify` | `amplify.yml`, security headers, start-job workflow, IAM policy |
-| `docker` | Language-appropriate `Dockerfile`, `docker-compose.yml` |
+| Overlay | Compatible stacks | Adds |
+|---------|-------------------|------|
+| `aws/lambda` | Python | SAM template, HTTP API Gateway, custom domain config, deploy workflow, IAM policy |
+| `aws/amplify` | Node.js | `amplify.yml`, security headers, start-job workflow, IAM policy |
+| `docker` | Python, Go, Node.js | Language-appropriate `Dockerfile`, `docker-compose.yml` |
 
 ## Services
 
 Services add backing infrastructure to your project.
 
 | Service | Provider | What it adds |
-|---------|----------|--------------|
+|---------|----------|--------------| 
 | `postgres` | `docker` | Local PostgreSQL via Docker Compose |
 | `postgres` | `aws-rds` | Terraform/OpenTofu module + SSM parameter store wiring |
 

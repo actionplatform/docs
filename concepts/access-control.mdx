@@ -1,5 +1,5 @@
 ---
-title: "Roles, Scopes, and Tokens in Hub"
+title: "Access Control in Hub: Roles, Scopes, and API Tokens"
 sidebarTitle: "Access Control"
 description: "Hub access control has three layers: roles set what you can do, scopes limit what a token may do on your behalf, and reach defines where it applies."
 ---
@@ -71,9 +71,7 @@ action-platform login <url> [--scope read,write] [--name label]
 | `--scope` | Comma-separated list of scopes to request. Defaults to all scopes your role allows. |
 | `--name` | A label for the token, shown in **Connected apps** |
 
-Running this command starts a **device flow**: Hub prints a short code and opens your browser. Approve the request there — choosing scopes, reach, and organization — and the CLI receives a 90-day JWT (30 days when the `admin` scope is included).
-
-The token is stored locally and sent as a `Bearer` token on every API request. It is tied to a row in `api_token`; revoking that row invalidates the token on the next request.
+Running this command starts a **device flow**: Hub prints a short code and opens your browser. Approve the request there — choosing scopes, reach, and organization — and the CLI receives a token valid for 90 days (30 days when the `admin` scope is included). Tokens are stored securely on the server and can be revoked at any time from **Connected apps**.
 
 ## Managing tokens
 

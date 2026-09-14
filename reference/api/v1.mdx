@@ -22,7 +22,7 @@ For tokens that span multiple organizations, specify which organization a given 
 X-Organization: <id or slug>
 ```
 
-You need `X-Organization` on organization-level routes when your token's reach is set to "all organizations." App-level routes resolve the organization automatically from the app's registry entry.
+You need `X-Organization` on organization-level routes when your token's reach is set to "all organizations." App-level routes resolve the organization automatically from the app's registered metadata.
 
 ## Read routes (any member)
 
@@ -132,9 +132,9 @@ All workspace endpoints from [`/api/apps/{id}/*`](/reference/api/apps) are avail
 
 - **Role and scope enforcement** — the caller's role in the app's organization is checked against the required permission for each route
 - **Reach enforcement** — tokens scoped to a project or app can only reach their assigned resources
-- **Automatic credential injection** — the source host's credentials are decrypted and injected into every request that needs to talk to the code host, with OAuth tokens refreshed when expired
+- **Automatic credential handling** — source host credentials and OAuth tokens are supplied automatically for every request that talks to the code host, with OAuth tokens refreshed when expired
 - **Commit identity injection** — the organization's git author name and email are attached to every call that may produce a commit
-- **Post-action sync** — after `sync`, `release`, `push`, `branches`, `checkout`, `pull-request`, and `commit`, Hub copies new releases and pull requests from the code host into the database
+- **Post-action sync** — after `sync`, `release`, `push`, `branches`, `checkout`, `pull-request`, and `commit`, Hub copies new releases and pull requests from the code host into your Hub organization
 
 ## Jobs
 
@@ -164,7 +164,7 @@ Returns the current state of a job.
 
 ### `GET /api/v1/jobs?app=<id>`
 
-Lists the last 20 jobs for a given app registry ID. Useful for monitoring release and deploy history.
+Lists the last 20 jobs for the given app. Useful for monitoring release and deploy history.
 
 <Note>
   A token scoped to a single project or app is refused on all organization management routes. The `403` response names the specific permission the token is missing (e.g. `org.manage`). Widen the token's scope or use an organization-level token for those operations.

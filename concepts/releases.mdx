@@ -37,7 +37,7 @@ A single repository can contain multiple independently versioned components. Dec
 
 ```toml
 [components.api]
-path = "action_platform/api"
+path = "services/api"
 
 [components.web]
 path = "apps/web"
@@ -45,11 +45,11 @@ path = "apps/web"
 
 Each component gets its own `LAST_VERSION`, `CHANGELOG.md`, version files, tags, and publish target:
 
-| Component | Path | Command | Tag format | Publishes to |
-|-----------|------|---------|------------|--------------|
-| Root CLI + library | `.` | `action-platform release minor` | `v0.3.0` | `action-platform` on PyPI |
-| `api` | `action_platform/api` | `action-platform release --component api patch` | `api/v0.1.2` | `actionplatformio/action-platform-api` on Docker Hub + GHCR |
-| `web` | `apps/web` | `action-platform release --component web minor` | `web/v0.2.0` | `actionplatformio/action-platform-web` on Docker Hub + GHCR |
+| Component | Path | Command | Tag format |
+|-----------|------|---------|------------|
+| Root | `.` | `action-platform release minor` | `v0.3.0` |
+| `api` | `services/api` | `action-platform release --component api patch` | `api/v0.1.2` |
+| `web` | `apps/web` | `action-platform release --component web minor` | `web/v0.2.0` |
 
 The root component's changelog excludes commits that only touched a sub-component path. Each component's changelog includes only commits that touched its path.
 

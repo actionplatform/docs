@@ -27,7 +27,7 @@ Key commands: `init`, `branch`, `pr`, `release`, `deploy`, `rollback`, `diagnose
 
 ### MCP server
 
-Install the MCP extra and point Claude Code, Codex, or Cursor at Hub. The server exposes 36 tools that understand your current directory, your identity, your role, and what your token is allowed to do. Run locally or against a hosted platform after `action-platform login` — both modes use identical tools.
+Install the MCP extra and point Claude Code, Codex, or Cursor at Hub. In local mode the server exposes 17 tools that understand your current directory. Log in with `action-platform login` and switch to remote mode to access 36 tools that understand your identity, your role, and what your token is allowed to do across all of your hosted apps.
 
 ## What you can build
 
@@ -35,8 +35,8 @@ Every template ships with tests, lint, CI, and an `AGENTS.md` that orients both 
 
 | Type | Stacks |
 |------|--------|
-| `web` | Python (FastAPI, FastMCP) · Go (Gin) · Node (Fastify, React) · Java (Spring) · Kotlin (Spring) · Ruby (Sinatra) |
-| `library` | Python · Go · PHP · Node · Java · Rust |
+| `web` | Python (FastAPI, FastMCP) · Go (Gin) · Node (Fastify, React, React+Vite) · Java (Spring) · Kotlin (Spring) · Ruby (Sinatra) |
+| `library` | Python (Poetry, Typer) · Go (module, Cobra) · PHP (Composer) · Node (npm) · Java (Maven) · Rust (Cargo) |
 | `docs` | MkDocs |
 | `plugin` | Chrome extension |
 | `empty` | `platform.toml` + code quality only |

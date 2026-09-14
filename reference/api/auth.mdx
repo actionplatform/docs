@@ -19,7 +19,7 @@ Authenticates a user with email and password. Returns a session token and sets a
 </ParamField>
 
 <ParamField body="password" type="string" required>
-  The account password. Verified with scrypt, so existing accounts from earlier platform versions continue to work.
+  The account password.
 </ParamField>
 
 <ParamField body="ip_address" type="string">
@@ -167,7 +167,7 @@ Browser-side approval page. Displays what the device requested. The user then ca
 
 ## Scoped tokens (API tokens)
 
-Scoped tokens let you mint long-lived JWTs tied to a specific scope and reach. They are signed with a key derived from `AP_AUTH_SECRET` via HKDF and carry the audience `action-platform/api/v1`. Revoking a token invalidates it on the next request.
+Scoped tokens let you mint long-lived tokens tied to a specific scope and reach. Revoking a token invalidates it on the next request.
 
 <Note>
   `POST /api/auth/tokens` requires an active browser session. You cannot mint a new token using an existing token.

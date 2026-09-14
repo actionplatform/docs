@@ -1,5 +1,5 @@
 ---
-title: "Git-Flow Enforcement in Hub"
+title: "Git-Flow Enforcement: Branches, Commits, and Pull Requests"
 sidebarTitle: "Git-Flow"
 description: "Hub enforces git-flow at three layers — git hooks, CI, and the platform — so every branch, commit, and pull request follows the same rules."
 ---
@@ -20,6 +20,7 @@ Every branch belongs to exactly one kind. The kind determines where it starts, w
 | `test/<code>` | `develop` | `develop` | `X.Y.Z-rc.N` pre-release |
 | `ci/<code>` | `develop` | `develop` | `X.Y.Z-rc.N` pre-release |
 | `perf/<code>` | `develop` | `develop` | `X.Y.Z-rc.N` pre-release |
+| `support/<code>` | `develop` | `develop` | `X.Y.Z-rc.N` pre-release |
 | `release/<version>` | `develop` | `main` and `develop` | `X.Y.Z-rc.N` until merged, then `X.Y.Z` |
 | `hotfix/<code>` | `main` | `main` and `develop` | `X.Y.Z-rc.N` until merged, then `X.Y.Z` |
 | `main` / `master` | — | — | Stable `X.Y.Z` → PyPI / npm / … |
@@ -96,9 +97,9 @@ The same rules are implemented once and enforced by three independent gatekeeper
 
 | Enforcer | What it checks |
 |----------|----------------|
-| **Git hooks** — `commit-msg` and `pre-push` in `action_platform/hooks/` (installed by `action-platform install`) | `commit-msg` rejects a non-conventional subject or a direct commit on a protected branch; `pre-push` rejects pushing a protected branch with non-release commits |
+| **Git hooks** — installed by `action-platform install` | `commit-msg` rejects a non-conventional subject or a direct commit on a protected branch; `pre-push` rejects pushing a protected branch with non-release commits |
 | **CI** — `gitflow.sh` in [ci-scripts](https://github.com/actionplatform/ci-scripts), run by GitHub Actions, GitLab CI, or Jenkins on every pull request | The same branch-name and commit-message checks applied on the remote |
-| **The platform** — `action_platform/core/flow/gitflow.py`, used by the CLI, MCP tools, and the web app's Branch policy card | Audits the current branch and its commits on demand |
+| **The platform** — used by the CLI, MCP tools, and the web app's Branch policy card | Audits the current branch and its commits on demand |
 
 <Note>
 Hub preserves any hooks you already have. An existing `pre-commit`, `commit-msg`, or `pre-push` that is not Hub's is renamed to `<name>.pre-action-platform` and still runs after Hub's check. When `core.hooksPath` points at a versioned directory (Husky's `.husky/`, lefthook), nothing is touched — git-flow enforcement falls back to CI only, and the CLI tells you so.

@@ -1,7 +1,7 @@
 ---
 title: "Using the Hub Web App: Projects, Apps, and Releases"
 sidebarTitle: "Web App"
-description: "Manage your entire development lifecycle from the browser — create apps, connect code hosts, cut releases, and invite your team, all without leaving Hub."
+description: "Manage your development lifecycle from the browser — create apps, connect code hosts, cut releases, and invite your team, all without leaving Hub."
 ---
 
 The Hub web app is a full browser interface to the platform — every operation available in the CLI is also available here, for your whole team. It reads and writes through the same API, so anything you do in the browser is immediately visible to the CLI and to AI agents connected to the same instance.
@@ -32,13 +32,13 @@ Go to **Settings → Connect a code host** to link GitHub, GitLab, or Bitbucket.
 
 **GitHub (recommended — two clicks):** Click **Create GitHub App**. Hub opens GitHub with a pre-filled manifest (permissions: contents, workflows, administration, pull requests, organization members; callback already set). Confirm the name, and the app's credentials land in Hub automatically. Then click **Install the app on GitHub** to authorize it on your account or organization, and finally **Connect with GitHub**. Tokens from a GitHub App expire and refresh automatically — you never need to rotate them by hand.
 
-If you already have an OAuth app, click **I already have one** and enter your credentials. Each provider's callback URL:
+If you already have an OAuth app, click **I already have one** and enter your credentials. Each provider's callback URL (replace `https://your-hub-instance.com` with the URL you use to access Hub):
 
 | Provider | Register at | Callback URL |
 |---|---|---|
-| GitHub | Settings → Developer settings → OAuth Apps | `${PUBLIC_URL}/api/oauth/github/callback` |
-| GitLab | Preferences → Applications (scopes: `api write_repository read_user`) | `${PUBLIC_URL}/api/oauth/gitlab/callback` |
-| Bitbucket | Workspace settings → OAuth consumers (account; repositories write/admin; pull requests write) | `${PUBLIC_URL}/api/oauth/bitbucket/callback` |
+| GitHub | Settings → Developer settings → OAuth Apps | `https://your-hub-instance.com/api/oauth/github/callback` |
+| GitLab | Preferences → Applications (scopes: `api write_repository read_user`) | `https://your-hub-instance.com/api/oauth/gitlab/callback` |
+| Bitbucket | Workspace settings → OAuth consumers (account; repositories write/admin; pull requests write) | `https://your-hub-instance.com/api/oauth/bitbucket/callback` |
 
 **Add with a token** is the manual path: choose the kind, enter the base URL (for self-hosted instances), username, token, and default owner.
 
