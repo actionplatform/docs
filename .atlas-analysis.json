@@ -1,0 +1,148 @@
+{
+  "projectType": "saas",
+  "projectName": "Hub",
+  "projectDescription": "Action Platform is an internal developer platform that scaffolds, releases, and deploys services on any stack and cloud — available as a web app, a CLI, and an MCP server for AI agents.",
+  "theme": "aspen",
+  "primaryColor": "#040404",
+  "lightColor": "#244455",
+  "darkColor": null,
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "self-hosting"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/git-flow",
+              "concepts/templates",
+              "concepts/manifest",
+              "concepts/releases",
+              "concepts/access-control"
+            ]
+          },
+          {
+            "group": "Using Hub",
+            "pages": [
+              "guides/web-app",
+              "guides/cli",
+              "guides/mcp",
+              "guides/ai-agents"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Reference",
+        "groups": [
+          {
+            "group": "CLI Reference",
+            "pages": [
+              "reference/cli/scaffold",
+              "reference/cli/git-flow",
+              "reference/cli/release",
+              "reference/cli/environment"
+            ]
+          },
+          {
+            "group": "MCP Reference",
+            "pages": [
+              "reference/mcp/local-tools",
+              "reference/mcp/remote-tools",
+              "reference/mcp/prompts"
+            ]
+          },
+          {
+            "group": "API Reference",
+            "pages": [
+              "reference/api/overview",
+              "reference/api/auth",
+              "reference/api/apps",
+              "reference/api/v1"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "reference/platform-toml",
+              "reference/environment-variables"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "One-command scaffolding for web apps, libraries, docs, and plugins across Python, Go, Node, Java, Kotlin, Ruby, PHP, and Rust",
+    "Enforced git-flow with Conventional Commits via git hooks and CI checks",
+    "Automated versioned releases with changelog generation for PyPI, npm, Docker, and GitHub",
+    "Cloud overlays for AWS Lambda, AWS Amplify, and Docker deployments",
+    "MCP server with 36 remote tools for Claude Code, Codex, and Cursor",
+    "Role-based access control with scoped tokens (owner, admin, deployer, developer, viewer)",
+    "Web app with Organizations → Teams → Projects → Apps hierarchy",
+    "Self-hosting via a single install script or Dokploy template",
+    "Import existing repositories with automatic platform.toml installation",
+    "Custom template catalogs from any git repository"
+  ],
+  "publicApiSurface": [
+    "action-platform init",
+    "action-platform install",
+    "action-platform branch",
+    "action-platform gitflow",
+    "action-platform pr",
+    "action-platform release",
+    "action-platform deploy",
+    "action-platform rollback",
+    "action-platform diagnose",
+    "action-platform destroy",
+    "action-platform cloud set",
+    "action-platform service add",
+    "action-platform login",
+    "action-platform whoami",
+    "action-platform logout",
+    "action-platform mcp",
+    "action-platform mcp --remote",
+    "action-platform api",
+    "GET /api/version",
+    "GET /api/matrix",
+    "GET /api/apps",
+    "POST /api/apps/init",
+    "GET /api/apps/{id}",
+    "POST /api/apps/{id}/release",
+    "POST /api/apps/{id}/deploy",
+    "GET /api/apps/{id}/diagnose",
+    "GET /api/auth/session",
+    "POST /api/auth/sign-in",
+    "POST /api/auth/device/code",
+    "POST /api/auth/tokens",
+    "GET /api/v1/projects",
+    "GET /api/v1/apps",
+    "POST /api/v1/projects/{id}/apps/init",
+    "MCP tool: list_matrix",
+    "MCP tool: init_project",
+    "MCP tool: install_platform",
+    "MCP tool: start_branch",
+    "MCP tool: propose_pull_request",
+    "MCP tool: release",
+    "MCP tool: deploy",
+    "MCP tool: diagnose",
+    "MCP tool: whoami",
+    "MCP tool: list_organizations",
+    "MCP tool: list_apps",
+    "MCP tool: create_project",
+    "MCP tool: write_manifest",
+    "MCP tool: commit_changes",
+    "MCP prompt: new_service",
+    "MCP prompt: ship_feature",
+    "MCP prompt: cut_release",
+    "MCP prompt: deploy_project"
+  ]
+}

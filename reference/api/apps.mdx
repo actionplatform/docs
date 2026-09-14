@@ -1,0 +1,371 @@
+---
+title: "Hub API Apps Endpoints: Create, Sync, and Deploy Apps"
+sidebarTitle: "Apps"
+description: "Reference for /api/apps/* — the app registry and workspace operations: create from templates, sync, configure, branch, release, and deploy."
+---
+
+The `/api/apps` endpoints manage the app registry and workspace operations. You use them to create apps from templates or existing repos, sync workspaces with the code host, edit configuration, manage git-flow branches, cut releases, and deploy. The web app drives all of its app pages through these routes.
+
+---
+
+## Registry
+
+### `GET /api/apps`
+
+Returns all apps in the registry. Each entry includes the app's id, name, URL, and default branch.
+
+---
+
+### `POST /api/apps`
+
+Clones an existing repository into the registry.
+
+**Request body**
+
+<ParamField body="url" type="string" required>
+  The repository URL to clone.
+</ParamField>
+
+<ParamField body="name" type="string" required>
+  Display name for the app in the registry.
+</ParamField>
+
+<ParamField body="install" type="boolean">
+  When `true`, Hub installs the platform files (`platform.toml` and CI configuration) into the repository after cloning.
+</ParamField>
+
+---
+
+### `POST /api/apps/init`
+
+Generates a new app from a template.
+
+**Request body**
+
+<ParamField body="type" type="string" required>
+  App type (e.g. `service`, `library`).
+</ParamField>
+
+<ParamField body="stack" type="string" required>
+  Technology stack identifier.
+</ParamField>
+
+<ParamField body="template" type="string" required>
+  Template name within the stack.
+</ParamField>
+
+<ParamField body="name" type="string" required>
+  Repository and app name.
+</ParamField>
+
+<ParamField body="ci" type="string">
+  CI provider to configure (e.g. `github-actions`, `gitlab-ci`).
+</ParamField>
+
+<ParamField body="cloud" type="string">
+  Cloud target overlay to apply.
+</ParamField>
+
+<ParamField body="source_host" type="string">
+  Source host ID to create the repository on.
+</ParamField>
+
+---
+
+### `DELETE /api/apps/{id}`
+
+Removes the workspace from the registry. The repository on the code host is not deleted.
+
+---
+
+## Workspace
+
+### `POST /api/apps/{id}/sync`
+
+Rebuilds the workspace clone so it is level with the remote on the app's current branch. If the app is on a merged branch, Hub falls back to the default branch.
+
+**Request body**
+
+<ParamField body="reset" type="boolean">
+  When `true`, Hub also drops all pending (uncommitted) edits from the database before syncing.
+</ParamField>
+
+---
+
+### `GET /api/apps/{id}`
+
+Returns the full workspace state: the parsed `platform.toml`, a git-flow audit of the current branch, and branch metadata. If `platform.toml` is missing from the clone, Hub restores it automatically before responding.
+
+---
+
+### `GET /api/apps/{id}/gitflow`
+
+Returns a git-flow audit of the current branch — whether the branch name conforms to the expected pattern, whether it is up to date with its base, and any issues that would block release.
+
+---
+
+### `GET /api/apps/{id}/commits`
+
+Returns recent commits on the current branch.
+
+---
+
+### `GET /api/apps/{id}/branches`
+
+Returns all branches for the app.
+
+<ResponseField name="name" type="string">
+  Branch name.
+</ResponseField>
+
+<ResponseField name="protected" type="boolean">
+  When `true`, direct pushes are blocked; commits must go through a pull request.
+</ResponseField>
+
+<ResponseField name="stable" type="boolean">
+  When `true`, this branch is a long-lived release line.
+</ResponseField>
+
+---
+
+### `GET /api/apps/{id}/tags`
+
+Returns all version tags for the app.
+
+---
+
+### `GET /api/apps/{id}/releases`
+
+Returns the release history for the app.
+
+---
+
+### `GET /api/apps/{id}/changes`
+
+Returns the unreleased changes since the last release.
+
+---
+
+### `GET /api/apps/{id}/next-version`
+
+Previews the version number a release would produce.
+
+**Query parameters**
+
+<ParamField query="level" type="string" required>
+  Semver bump level: `major`, `minor`, or `patch`.
+</ParamField>
+
+<ParamField query="branch" type="string">
+  Branch to compute the next version from. Defaults to the current branch.
+</ParamField>
+
+---
+
+### `GET /api/apps/{id}/branches/plan`
+
+Previews the name and base branch that a new git-flow branch would receive.
+
+**Query parameters**
+
+<ParamField query="kind" type="string" required>
+  Branch kind (e.g. `feature`, `fix`, `release`).
+</ParamField>
+
+<ParamField query="code" type="string" required>
+  Short identifier for the branch (used in the branch name).
+</ParamField>
+
+<ParamField query="slug" type="string">
+  Optional slug override.
+</ParamField>
+
+---
+
+## Configuration
+
+### `GET /api/apps/{id}/manifest`
+
+Returns the current `platform.toml` as a parsed object.
+
+---
+
+### `PUT /api/apps/{id}/manifest`
+
+Replaces the `platform.toml` with the provided content. The change is staged as a pending edit until you commit it.
+
+---
+
+### `POST /api/apps/{id}/cloud`
+
+Applies a cloud overlay to the workspace configuration.
+
+**Request body**
+
+<ParamField body="target" type="string" required>
+  Cloud target identifier (e.g. `aws`, `gcp`, `azure`).
+</ParamField>
+
+---
+
+### `POST /api/apps/{id}/services`
+
+Adds a service dependency to the app configuration.
+
+**Request body**
+
+<ParamField body="service" type="string" required>
+  Service type (e.g. `postgres`, `redis`).
+</ParamField>
+
+<ParamField body="provider" type="string" required>
+  Provider for the service.
+</ParamField>
+
+---
+
+### `POST /api/apps/{id}/install`
+
+Installs or reinstalls the platform files into the workspace.
+
+**Request body**
+
+<ParamField body="type" type="string">
+  App type. Inferred from `platform.toml` if omitted.
+</ParamField>
+
+<ParamField body="language" type="string">
+  Primary language override.
+</ParamField>
+
+<ParamField body="ci" type="string">
+  CI provider to configure.
+</ParamField>
+
+---
+
+### `POST /api/apps/{id}/discard`
+
+Drops all pending (uncommitted) edits from the workspace. This cannot be undone.
+
+---
+
+### `POST /api/apps/{id}/commit`
+
+Commits pending edits to the repository.
+
+**Request body**
+
+<ParamField body="message" type="string" required>
+  Commit message.
+</ParamField>
+
+<ParamField body="branch" type="string">
+  Target branch. Defaults to the current branch.
+</ParamField>
+
+<ParamField body="push" type="boolean">
+  When `true`, pushes the commit to the remote immediately.
+</ParamField>
+
+<ParamField body="pull_request" type="boolean">
+  When `true` and the current branch is protected, opens a pull request instead of pushing directly.
+</ParamField>
+
+---
+
+## Git-flow
+
+### `POST /api/apps/{id}/branches`
+
+Starts a new git-flow branch.
+
+**Request body**
+
+<ParamField body="kind" type="string" required>
+  Branch kind: `feature`, `fix`, `release`, `hotfix`, or `chore`.
+</ParamField>
+
+<ParamField body="code" type="string" required>
+  Short identifier included in the branch name (e.g. a ticket number or topic).
+</ParamField>
+
+<ParamField body="slug" type="string">
+  Optional slug appended to the branch name.
+</ParamField>
+
+---
+
+### `POST /api/apps/{id}/checkout`
+
+Switches the workspace to a different branch.
+
+**Request body**
+
+<ParamField body="branch" type="string" required>
+  Branch name to check out.
+</ParamField>
+
+---
+
+### `GET /api/apps/{id}/pull-request`
+
+Returns any open pull request for the current branch.
+
+---
+
+### `POST /api/apps/{id}/pull-request`
+
+Opens a pull request for the current branch against its base.
+
+---
+
+## Release & Deploy
+
+### `POST /api/apps/{id}/release`
+
+Cuts a release. Hub fast-forwards the branch before tagging; if the push is refused, Hub undoes the commit and tag.
+
+Add `Prefer: respond-async` or `X-Async: 1` to run this as a [background job](/reference/api/overview#async-jobs).
+
+**Request body**
+
+<ParamField body="level" type="string" required>
+  Semver bump level: `major`, `minor`, or `patch`.
+</ParamField>
+
+<ParamField body="branch" type="string">
+  Branch to release from. Defaults to the current branch.
+</ParamField>
+
+<ParamField body="dry_run" type="boolean">
+  When `true` (the default), Hub previews the release without writing any commits or tags. Set to `false` to execute.
+</ParamField>
+
+---
+
+### `POST /api/apps/{id}/deploy`
+
+Deploys the app.
+
+Add `Prefer: respond-async` or `X-Async: 1` to run this as a [background job](/reference/api/overview#async-jobs).
+
+**Request body**
+
+<ParamField body="target" type="string">
+  Deploy target identifier. Defaults to the target defined in `platform.toml`.
+</ParamField>
+
+<ParamField body="stage" type="string">
+  Deployment stage (e.g. `staging`, `production`).
+</ParamField>
+
+<ParamField body="dry_run" type="boolean">
+  When `true` (the default), Hub previews the deployment plan without applying changes.
+</ParamField>
+
+---
+
+### `GET /api/apps/{id}/diagnose`
+
+Runs a health check on the deploy target. Returns the target's status and any configuration problems blocking deployment.

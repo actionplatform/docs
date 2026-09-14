@@ -1,0 +1,125 @@
+---
+title: "CLI Git-Flow Commands: branch, gitflow, and pr"
+sidebarTitle: "Git-Flow"
+description: "Create correctly named branches, open pull requests with auto-built bodies, and audit or enforce git-flow compliance across your repositories."
+---
+
+The git-flow commands enforce a consistent branching strategy across every project. Use `branch` to
+create correctly named branches from the right base, `pr` to open pull requests with a body built from
+your commits, and `gitflow` to audit or install the enforcement hooks.
+
+---
+
+## `action-platform branch`
+
+```bash
+action-platform branch <kind> <code> [slug]
+```
+
+Create a new branch that follows the git-flow naming convention. The CLI pulls the correct base branch
+(`develop` for most kinds, `main`/`master` for `hotfix` and `release`), creates the new branch locally,
+and pushes it to the remote.
+
+| Argument | Description |
+|---|---|
+| `<kind>` | Branch type — see the table of valid kinds below. |
+| `<code>` | Issue or ticket identifier. Can be a number (`42`) or a key (`PROJ-7`). |
+| `[slug]` | Optional short description appended to the branch name. Spaces are converted to hyphens. |
+
+### Examples
+
+```bash
+# Creates feature/42-login from develop
+action-platform branch feature 42 login
+
+# Creates hotfix/PROJ-7 from main
+action-platform branch hotfix PROJ-7
+
+# Creates docs/15-api-reference from develop
+action-platform branch docs 15 api-reference
+```
+
+### Valid branch kinds
+
+| Kind | Base branch | Typical use |
+|---|---|---|
+| `feature` | `develop` | New functionality |
+| `bugfix` | `develop` | Bug fixes that are not urgent |
+| `hotfix` | `main` / `master` | Urgent production fixes |
+| `release` | `develop` | Release preparation |
+| `support` | `main` / `master` | Long-term maintenance |
+| `chore` | `develop` | Dependency bumps, tooling |
+| `docs` | `develop` | Documentation only |
+| `refactor` | `develop` | Code restructuring without behaviour change |
+| `test` | `develop` | Adding or fixing tests |
+| `ci` | `develop` | CI/CD pipeline changes |
+| `perf` | `develop` | Performance improvements |
+
+---
+
+## `action-platform gitflow`
+
+```bash
+action-platform gitflow [--install-hooks]
+```
+
+Audit the current repository for git-flow compliance. The command checks:
+
+- Whether the current branch name matches the expected `<kind>/<code>[-slug]` pattern.
+- Whether every commit in the branch follows the [Conventional Commits](https://www.conventionalcommits.org)
+  specification.
+
+Results are printed as a structured report. Any violation is flagged with the offending branch name or
+commit SHA.
+
+### Flag
+
+<ParamField path="--install-hooks" type="boolean">
+  Install `commit-msg` and `pre-push` git hooks into `.git/hooks/`. Once installed, the hooks
+  automatically enforce the same rules on every future commit and push — no need to run `gitflow`
+  manually. The `action-platform install` command installs these hooks as well.
+</ParamField>
+
+---
+
+## `action-platform pr`
+
+```bash
+action-platform pr [--draft] [--dry-run]
+```
+
+Open a pull request for the current branch. The CLI determines the correct PR target branch by
+applying the git-flow rules (for example, `feature/*` targets `develop`, `hotfix/*` targets
+`main`/`master`), then builds the PR body automatically from the commits on the branch.
+
+### Flags
+
+<ParamField path="--draft" type="boolean">
+  Open the pull request in draft state. Use this when the branch is still in progress and you want
+  early visibility without triggering required reviews.
+</ParamField>
+
+<ParamField path="--dry-run" type="boolean">
+  Print the computed target branch and the PR body that would be submitted, then exit without
+  creating anything. Useful for previewing the output before opening the real PR.
+</ParamField>
+
+### How the PR body is built
+
+Each Conventional Commit on the branch contributes a line to the body. The type prefix (`feat`,
+`fix`, `docs`, etc.) maps to a section heading. Breaking changes (`!` suffix or `BREAKING CHANGE`
+footer) appear in a dedicated **Breaking Changes** section at the top.
+
+---
+
+## Commit and push hooks
+
+Hooks installed by `action-platform install` or `action-platform gitflow --install-hooks` add two
+automatic safeguards to your local repository:
+
+- **`commit-msg`** — Rejects any commit message that does not conform to the Conventional Commits
+  specification. The hook prints the expected format and exits non-zero, aborting the commit.
+- **`pre-push`** — Rejects direct pushes to protected branches (`main`, `master`, `develop`,
+  `release/*`). You must open a pull request instead.
+
+Both hooks run locally and require no network access.

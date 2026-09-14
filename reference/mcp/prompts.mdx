@@ -1,0 +1,156 @@
+---
+title: "MCP Prompts: Guided Workflows for AI Agents"
+sidebarTitle: "Prompts"
+description: "Hub's 6 built-in MCP prompts sequence tools in the right order for common workflows — scaffold, ship, release, deploy, and fix git-flow automatically."
+---
+
+Hub ships **6 MCP prompts** that sequence tools in the right order for common
+workflows. Instead of manually orchestrating a chain of tool calls, you reference
+a prompt by name and your AI agent executes the full workflow — pausing for
+confirmation at any step that makes a real change.
+
+<Tip>
+  Reference a prompt by name in your agent's system prompt or in the
+  conversation (for example: _"run the `ship_feature` prompt"_) to trigger the
+  full workflow automatically.
+</Tip>
+
+## Prompts
+
+<AccordionGroup>
+
+  <Accordion title="new_service — Scaffold a new service from a template">
+    **Use when:** you want to create a brand-new project from scratch.
+
+    **Workflow:**
+
+    ```
+    list_matrix → init_project → cloud_set (optional) → push_project
+    ```
+
+    | Step | What happens |
+    |---|---|
+    | `list_matrix` | Discover available templates filtered by type, stack, or framework |
+    | `init_project` | Scaffold the chosen template into the current directory |
+    | `cloud_set` _(optional)_ | Apply a cloud overlay if you want to target a specific provider |
+    | `push_project` | Push the new project to the remote repository |
+
+    The agent asks which template and (optionally) which cloud target before
+    making any changes.
+  </Accordion>
+
+  <Accordion title="ship_feature — Develop and ship a feature end-to-end">
+    **Use when:** you are starting or finishing a feature and want the full
+    git-flow cycle handled for you.
+
+    **Workflow:**
+
+    ```
+    start_branch → develop → propose_pull_request → open_pull_request
+    ```
+
+    | Step | What happens |
+    |---|---|
+    | `start_branch` | Create a correctly named git-flow branch from `develop` or `main` |
+    | _develop_ | Your normal development work on the branch |
+    | `propose_pull_request` | Determine target branch and generate a PR body from rules and commits |
+    | `open_pull_request` | Publish the PR to the code host |
+
+    The agent validates branch naming and commit messages with `gitflow_audit`
+    before proposing the PR, and surfaces any violations for you to fix first.
+  </Accordion>
+
+  <Accordion title="cut_release — Cut a versioned release safely">
+    **Use when:** you are ready to tag and publish a new release.
+
+    **Workflow:**
+
+    ```
+    gitflow_audit → release (dry run) → release (confirmed)
+    ```
+
+    | Step | What happens |
+    |---|---|
+    | `gitflow_audit` | Verify the branch and commit history are clean before tagging |
+    | `release` _(dry run)_ | Show exactly what version will be tagged and what changelog will be generated |
+    | `release` _(confirmed)_ | Cut the real release after your explicit approval |
+
+    The agent **always** runs the dry run first and presents the result before
+    asking whether to proceed with the real release.
+  </Accordion>
+
+  <Accordion title="deploy_project — Deploy to the configured cloud target">
+    **Use when:** you want to ship a build to your cloud target.
+
+    **Workflow:**
+
+    ```
+    diagnose → deploy (dry run) → deploy (confirmed)
+    ```
+
+    | Step | What happens |
+    |---|---|
+    | `diagnose` | Run the deploy target's health check; surface any blockers before attempting a deploy |
+    | `deploy` _(dry run)_ | Show the full deploy plan without changing anything |
+    | `deploy` _(confirmed)_ | Execute the real deploy after your explicit approval |
+
+    If `diagnose` reports failures the agent stops and presents the issues for
+    you to resolve before re-attempting.
+  </Accordion>
+
+  <Accordion title="adopt_repository — Bring an existing repo onto Hub">
+    **Use when:** you have an existing project that you want to manage through
+    Hub without starting from scratch.
+
+    **Workflow:**
+
+    ```
+    install_platform → gitflow_audit → push_project
+    ```
+
+    | Step | What happens |
+    |---|---|
+    | `install_platform` | Add `platform.toml`, quality config, CI workflows, and git hooks to the repo without overwriting existing code |
+    | `gitflow_audit` | Check that the existing branch and commit history conform to git-flow rules; surface violations |
+    | `push_project` | Push the updated repo (with platform tooling) to the remote |
+
+    The agent reviews the audit report with you before pushing; any violations
+    can be fixed (or accepted) before the push goes out.
+  </Accordion>
+
+  <Accordion title="fix_gitflow — Audit and fix git-flow violations">
+    **Use when:** CI is failing on git-flow checks or you want to clean up
+    branch naming and commit messages.
+
+    **Workflow:**
+
+    ```
+    gitflow_audit → guided corrections
+    ```
+
+    | Step | What happens |
+    |---|---|
+    | `gitflow_audit` | List every branch naming and commit message violation with the relevant rule |
+    | _guided corrections_ | The agent suggests the corrected branch name or commit message for each violation and applies fixes with your approval |
+
+    For commit-message violations the agent proposes an amended message and
+    confirms before calling `git commit --amend`. For branch-name violations it
+    proposes a rename and confirms before moving the branch.
+  </Accordion>
+
+</AccordionGroup>
+
+## How prompts work
+
+Every prompt that makes a destructive or irreversible change follows the same
+safety pattern:
+
+1. **Dry run first** — the agent calls the underlying tool with `dry_run=true`
+   and presents the full output to you.
+2. **Explicit confirmation** — the agent asks whether to proceed before calling
+   the tool with `dry_run=false`.
+3. **Commit only when ready** — steps that modify the workspace (manifest
+   edits, cloud overlays, service additions) are staged before `commit_changes`
+   is called, giving you a chance to review the diff.
+
+You can abort at any confirmation step without any changes having been made.

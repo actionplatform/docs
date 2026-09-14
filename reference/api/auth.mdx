@@ -1,0 +1,244 @@
+---
+title: "Hub API Auth Endpoints: Sessions and Bearer Tokens"
+sidebarTitle: "Auth"
+description: "Reference for /api/auth/* — sign-in, browser sessions, the RFC 8628 device authorization flow used by the CLI, and scoped API tokens."
+---
+
+The `/api/auth/*` endpoints handle all identity operations: signing in and out, managing browser sessions, running the device flow that powers `action-platform login`, and minting or revoking scoped API tokens. The web app is itself a client of these endpoints.
+
+## Sign in
+
+### `POST /api/auth/sign-in`
+
+Authenticates a user with email and password. Returns a session token and sets a signed browser cookie.
+
+**Request body**
+
+<ParamField body="email" type="string" required>
+  The account email address.
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  The account password. Verified with scrypt, so existing accounts from earlier platform versions continue to work.
+</ParamField>
+
+<ParamField body="ip_address" type="string">
+  Client IP address. Used for rate-limit enforcement (10 attempts per minute per IP).
+</ParamField>
+
+<ParamField body="user_agent" type="string">
+  Client user-agent string. Stored for session display.
+</ParamField>
+
+**Response**
+
+<ResponseField name="user" type="object">
+  The authenticated user record.
+</ResponseField>
+
+<ResponseField name="token" type="string">
+  Raw session token for use as `X-Session-Token`.
+</ResponseField>
+
+<ResponseField name="cookie" type="string">
+  Signed cookie value for use as `X-Session-Cookie`.
+</ResponseField>
+
+<ResponseField name="expires_at" type="string">
+  ISO 8601 timestamp when the session expires (7 days, refreshed when used after a day).
+</ResponseField>
+
+---
+
+### `POST /api/auth/sign-out`
+
+Ends the current session. No request body required.
+
+---
+
+### `GET /api/auth/session`
+
+Returns the full identity context for the caller. Identify yourself with one of:
+
+- `X-Session-Token` — the raw token returned by sign-in
+- `X-Session-Cookie` — the signed cookie value
+
+**Response**
+
+<ResponseField name="user" type="object">
+  The authenticated user.
+</ResponseField>
+
+<ResponseField name="session" type="object">
+  The active session record, including expiry.
+</ResponseField>
+
+<ResponseField name="active_organization" type="object">
+  The organization currently in context.
+</ResponseField>
+
+<ResponseField name="organizations" type="array">
+  All organizations the caller belongs to, each with their assigned `role` and the role's `grants` (the list of permissions the role holds). Pages use these grants alongside `GET /api/v1/access` to hide or disable actions the role cannot perform.
+</ResponseField>
+
+## Device flow (CLI / MCP)
+
+The CLI uses [RFC 8628](https://www.rfc-editor.org/rfc/rfc8628) OAuth 2.0 Device Authorization Grant. The full flow:
+
+1. Your CLI requests a device code.
+2. Hub displays a short code for you to enter in a browser.
+3. You approve the request in the browser; the CLI polls until approval.
+4. Hub issues a session token scoped to the permissions you granted.
+
+---
+
+### `POST /api/auth/device/code`
+
+Starts a device authorization flow.
+
+**Request body**
+
+<ParamField body="client_id" type="string" required>
+  Identifies the client program (e.g. `action-platform-cli`).
+</ParamField>
+
+<ParamField body="scope" type="string" required>
+  Space-separated list of requested scopes. `action-platform login` requests all scopes unless `--scope` is passed.
+</ParamField>
+
+**Response**
+
+<ResponseField name="device_code" type="string">
+  Opaque code the CLI uses when polling.
+</ResponseField>
+
+<ResponseField name="user_code" type="string">
+  Short human-readable code you enter at `verification_uri`.
+</ResponseField>
+
+<ResponseField name="verification_uri" type="string">
+  URL to open in a browser: `GET /api/auth/device?user_code=<code>`.
+</ResponseField>
+
+<ResponseField name="expires_in" type="integer">
+  Seconds until the device code expires.
+</ResponseField>
+
+<ResponseField name="interval" type="integer">
+  Minimum seconds between polling attempts.
+</ResponseField>
+
+---
+
+### `POST /api/auth/device/token`
+
+Polls for an approved token. Call this repeatedly at the interval returned above.
+
+**Request body**
+
+<ParamField body="grant_type" type="string" required>
+  Must be `urn:ietf:params:oauth:grant-type:device_code`.
+</ParamField>
+
+<ParamField body="device_code" type="string" required>
+  The `device_code` returned by `POST /api/auth/device/code`.
+</ParamField>
+
+**Response (success)**
+
+<ResponseField name="token" type="string">
+  Session token. Use this as `Authorization: Bearer <token>` on all `/api/v1/*` requests.
+</ResponseField>
+
+**Error states** (returned as `{"error": "…", "error_description": "…"}`):
+
+| Error | Meaning |
+|-------|---------|
+| `authorization_pending` | User hasn't approved yet — keep polling |
+| `slow_down` | Increase your polling interval |
+| `access_denied` | User denied the request |
+| `expired_token` | Device code expired; restart the flow |
+
+---
+
+### `GET /api/auth/device?user_code=<code>`
+
+Browser-side approval page. Displays what the device requested. The user then calls `POST /api/auth/device/approve` or `POST /api/auth/device/deny`.
+
+## Scoped tokens (API tokens)
+
+Scoped tokens let you mint long-lived JWTs tied to a specific scope and reach. They are signed with a key derived from `AP_AUTH_SECRET` via HKDF and carry the audience `action-platform/api/v1`. Revoking a token invalidates it on the next request.
+
+<Note>
+  `POST /api/auth/tokens` requires an active browser session. You cannot mint a new token using an existing token.
+</Note>
+
+---
+
+### `POST /api/auth/tokens`
+
+Mints a new scoped JWT.
+
+**Request body**
+
+<ParamField body="name" type="string" required>
+  A human-readable label for the token (shown in Connected apps).
+</ParamField>
+
+<ParamField body="scope" type="string" required>
+  One of `read`, `write`, `release`, or `admin`. The request is clamped to the scopes your role can grant.
+</ParamField>
+
+<ParamField body="organization_id" type="string" required>
+  The organization this token acts in.
+</ParamField>
+
+<ParamField body="project_id" type="string">
+  Limit the token's reach to one project. Omit to allow access to all projects in the organization.
+</ParamField>
+
+<ParamField body="app_id" type="string">
+  Limit the token's reach to one app. Omit to allow access to all apps in the organization.
+</ParamField>
+
+**Response**
+
+<ResponseField name="token" type="string">
+  The signed JWT. Store it securely — Hub does not show it again.
+</ResponseField>
+
+<ResponseField name="id" type="string">
+  Token ID. Use this to revoke the token.
+</ResponseField>
+
+<ResponseField name="expires_at" type="string">
+  Expiry timestamp. Tokens are valid for 90 days; tokens with `admin` scope expire after 30 days.
+</ResponseField>
+
+---
+
+### `GET /api/auth/tokens`
+
+Lists all tokens you have minted, with scope, reach, and the client programs that have used each one.
+
+---
+
+### `DELETE /api/auth/tokens/{id}`
+
+Revokes a token immediately. Any in-flight request using that token will be refused on its next check.
+
+## Sessions
+
+### `GET /api/auth/sessions`
+
+Lists all active browser sessions for your account, including IP address, user-agent, and last-used time.
+
+---
+
+### `DELETE /api/auth/sessions/{id}`
+
+Logs out a specific session. Use this to remotely sign out of a device you no longer control.
+
+<Note>
+  Sessions last 7 days and are refreshed automatically when used after a day. API tokens are valid for 90 days, or 30 days when issued with the `admin` scope.
+</Note>

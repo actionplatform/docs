@@ -1,0 +1,170 @@
+---
+title: "CLI Release, Deploy, and Rollback Commands Reference"
+sidebarTitle: "Release"
+description: "Publish versioned releases, deploy to cloud targets, roll back to a previous version, run diagnostics, and tear down infrastructure from the CLI."
+---
+
+The release and operate commands take your project from a merged branch through versioning, packaging,
+deployment, and — when things go wrong — rollback or diagnostics. Every command that touches infrastructure
+accepts `--dry-run` so you can preview what it would do before committing.
+
+<Warning>
+  `action-platform destroy` permanently removes the deploy target and all its associated cloud
+  resources. The source-host repository is **not** deleted, but this action cannot be undone.
+  Always confirm the target name before running it in production.
+</Warning>
+
+---
+
+## `action-platform release`
+
+```bash
+action-platform release [patch|minor|major|X.Y.Z] [flags]
+```
+
+Compute the next version, update every version-bearing file, and publish the release to your source
+host. The default bump level is `patch`.
+
+### What `release` does
+
+1. **Preflight** — Refuses a dirty working tree, an already-existing version, or an existing tag for
+   the computed version.
+2. **Version computation** — Reads `LAST_VERSION` and applies the requested bump level. On any branch
+   other than `main`/`master` the resulting version is a pre-release: `X.Y.Z-rc.N`, where `N`
+   increments with each successive release candidate.
+3. **Changelog** — Renders the conventional-commit log since the last tag and prepends it to
+   `CHANGELOG.md`.
+4. **File bumps** — Writes the new version into every version-bearing file it finds:
+   `LAST_VERSION`, `pyproject.toml`, `package.json`, `Cargo.toml`, `composer.json`, `pom.xml`,
+   `__version__` strings, and language-specific version constants.
+5. **Commit, tag, push, publish** — Creates a `chore(release): X.Y.Z` commit, tags it, pushes both
+   to the remote, and publishes a release on the source host (GitHub Releases, GitLab Releases, etc.)
+   with the rendered changelog as the body. CI runners are triggered automatically.
+
+<Note>
+  If the remote rejects the push (for example, because branch protection requires a PR), `release`
+  undoes the local commit and the tag so your working tree stays clean.
+</Note>
+
+### Flags
+
+<ParamField path="level" type="string" default="patch">
+  Bump level: `patch`, `minor`, `major`, or an exact semver string `X.Y.Z`. Determines how the
+  next version is derived from `LAST_VERSION`.
+</ParamField>
+
+<ParamField path="--dry-run" type="boolean">
+  Run the preflight and version-computation steps, print the next version and the rendered
+  changelog, then exit without writing any files or pushing anything.
+</ParamField>
+
+<ParamField path="--rc" type="boolean">
+  Force a pre-release version (`X.Y.Z-rc.N`) even when you are on `main`/`master`. Useful when you
+  want to publish a candidate from the default branch for testing.
+</ParamField>
+
+<ParamField path="--stable" type="boolean">
+  Force a stable version even when you are on a non-default branch. Use with caution — stable
+  releases should normally only be cut from `main`/`master`.
+</ParamField>
+
+<ParamField path="--component" type="string">
+  Release a single named component in a monorepo rather than the root project. The value must match
+  a `[component.<name>]` block in `platform.toml`.
+</ParamField>
+
+---
+
+## `action-platform deploy`
+
+```bash
+action-platform deploy [flags]
+```
+
+Deploy the current version to a configured deploy target. The command runs the target's `preflight`
+step first; `--dry-run` stops after preflight so you can validate configuration without affecting
+running infrastructure. On success, it runs `create`, `deploy`, and `switch_traffic` in order.
+
+### Flags
+
+<ParamField path="--target" type="string">
+  Name of the deploy target defined in `platform.toml`. Defaults to the first `[deploy]` block when
+  only one target is configured.
+</ParamField>
+
+<ParamField path="--stage" type="string" default="dev">
+  Deployment stage. Accepts `dev` or `prod`. Controls which environment variables and scaling
+  parameters the target uses.
+</ParamField>
+
+<ParamField path="--dry-run" type="boolean">
+  Run preflight checks and print the deployment plan, then exit without creating or updating any
+  cloud resources.
+</ParamField>
+
+---
+
+## `action-platform rollback`
+
+```bash
+action-platform rollback [flags]
+```
+
+Roll a deploy target back to a previously released version. The command re-deploys the specified
+version and shifts traffic to it.
+
+### Flags
+
+<ParamField path="--target" type="string">
+  Name of the deploy target to roll back. Defaults to the first `[deploy]` block.
+</ParamField>
+
+<ParamField path="--to" type="string">
+  The version to roll back to, in `X.Y.Z` format. Must correspond to a tag and a previously
+  published artifact for the target.
+</ParamField>
+
+<ParamField path="--stage" type="string">
+  Stage to roll back. Accepts `dev` or `prod`.
+</ParamField>
+
+---
+
+## `action-platform diagnose`
+
+```bash
+action-platform diagnose [flags]
+```
+
+Run diagnostics against a deploy target and print a structured health report. Use this to
+investigate deployment failures, misconfigured environment variables, unhealthy replicas, or
+connectivity issues between services.
+
+### Flags
+
+<ParamField path="--target" type="string">
+  Name of the deploy target to diagnose. Defaults to the first `[deploy]` block.
+</ParamField>
+
+---
+
+## `action-platform destroy`
+
+```bash
+action-platform destroy [flags]
+```
+
+Permanently remove a deploy target and all the cloud resources it manages. The source-host
+repository is **not** affected.
+
+<Warning>
+  This action is irreversible. All running instances, storage volumes, and network configuration
+  associated with the target are deleted. Double-check the `--target` value before proceeding.
+</Warning>
+
+### Flags
+
+<ParamField path="--target" type="string">
+  Name of the deploy target to destroy. Defaults to the first `[deploy]` block when only one is
+  configured; required when multiple targets are defined.
+</ParamField>

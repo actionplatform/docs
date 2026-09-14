@@ -1,0 +1,103 @@
+---
+title: "Hub MCP Server: AI Agents for Your Platform"
+sidebarTitle: "MCP Server"
+description: "Connect Claude Code, Codex, Cursor, or any MCP client to Hub and give your AI agent full lifecycle tools — scaffold, release, deploy, and diagnose."
+---
+
+Hub ships as an MCP server. Any client that speaks the Model Context Protocol — Claude Code, Codex, Cursor, or your own tooling — gets a complete set of tools for the development lifecycle: scaffolding, git-flow, releases, deployments, and diagnostics. The server also ships six built-in prompts that chain tools in the right order so the agent always asks before it acts.
+
+## Install
+
+```bash
+pip install "action-platform[mcp]"
+```
+
+This installs both the `action-platform` CLI and the `action-platform-mcp` entry point used by MCP clients.
+
+## Two modes
+
+Hub's MCP server runs in two modes depending on what you need:
+
+| | **Local** (`action-platform mcp`) | **Remote** (`action-platform mcp --remote`) |
+|---|---|---|
+| **Acts on** | The current directory and files on your machine | Apps on the hosted Hub instance you logged in to |
+| **Tool count** | 17 tools | 36 tools |
+| **Permissions** | Whatever your local user can do | Your role in the organization, narrowed by the token's scope and reach |
+| **Credentials** | Your shell environment | The JWT from `action-platform login`, sent as `Authorization: Bearer` |
+| **Templates** | Official repository, or a custom one via `source=url[@ref]` | Official plus every repository your organization added under Templates |
+
+Both modes default `release` and `deploy` to `dry_run=true`. The server descriptions tell the agent to show the dry-run result and ask for confirmation before calling again with `dry_run=false`.
+
+## Start the MCP server (local)
+
+```bash
+# stdio — the default, used by most MCP clients
+action-platform mcp
+
+# HTTP — useful for testing or clients that prefer HTTP transport
+action-platform mcp --http
+# → listening at http://127.0.0.1:8765/mcp
+```
+
+## Configure your client
+
+<CodeGroup>
+```bash Claude Code
+/plugin marketplace add actionplatform/action-platform
+/plugin install action-platform@action-platform
+```
+
+```json Any client (.mcp.json)
+{
+  "mcpServers": {
+    "action-platform": {
+      "command": "uvx",
+      "args": ["--from", "action-platform[mcp]", "action-platform-mcp"]
+    }
+  }
+}
+```
+
+```json Point at a hosted Hub instance
+{
+  "mcpServers": {
+    "platform": {
+      "command": "action-platform",
+      "args": ["mcp", "--remote"]
+    }
+  }
+}
+```
+</CodeGroup>
+
+<Note>
+  The `uvx` form in the `.mcp.json` snippet runs the server in an isolated environment without requiring a prior `pip install`. If you've already installed `action-platform[mcp]`, you can use `"command": "action-platform", "args": ["mcp"]` instead.
+</Note>
+
+## Connecting to a hosted instance
+
+To point the MCP server at a hosted Hub instance rather than local files, authenticate first:
+
+```bash
+action-platform login https://platform.example.com
+action-platform mcp --remote
+```
+
+After `login`, Hub stores a scoped JWT in `~/.action-platform/credentials.json`. Every tool call the agent makes goes to the hosted platform's `/api/v1/*` endpoints with `Authorization: Bearer <token>`. The platform enforces your role, the token's scope, and its reach on every request.
+
+## Built-in prompts
+
+The MCP server ships six high-level prompts. Each prompt chains the right tools in the correct order — the agent never has to guess which tools to call or in what sequence.
+
+| Prompt | What it does |
+|---|---|
+| `new_service` | Scaffold a new app from a template: runs `list_matrix`, helps you pick a stack and template, calls `init_project` or `init_app`, pushes, and registers the app |
+| `ship_feature` | Full feature branch lifecycle: audit git-flow, start a branch, commit work, run `gitflow_audit`, propose a pull request |
+| `cut_release` | Dry-run the release first, show the proposed version and changelog, ask for confirmation, then call `release` with `dry_run=false` |
+| `deploy_project` | Run `deploy` with `dry_run=true`, present the plan, ask for approval, then execute — optionally across multiple apps in a project |
+| `adopt_repository` | Run `install_platform` (or `add_app` on remote) on an existing repo that doesn't have Hub files, open a PR with the changes |
+| `fix_gitflow` | Audit the current branch, explain any violations, and guide you through the corrective steps (rebase, rename, or split commits) |
+
+<Note>
+  `cut_release` and `deploy_project` always start with a dry run. The agent presents the result and asks before proceeding — you stay in control of what leaves your machine or gets published.
+</Note>

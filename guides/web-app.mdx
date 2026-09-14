@@ -1,0 +1,122 @@
+---
+title: "Using the Hub Web App: Projects, Apps, and Releases"
+sidebarTitle: "Web App"
+description: "Manage your entire development lifecycle from the browser — create apps, connect code hosts, cut releases, and invite your team, all without leaving Hub."
+---
+
+The Hub web app is a full browser interface to the platform — every operation available in the CLI is also available here, for your whole team. It reads and writes through the same API, so anything you do in the browser is immediately visible to the CLI and to AI agents connected to the same instance.
+
+## Organization structure
+
+Hub organizes everything in a four-level hierarchy:
+
+```
+Organization
+├── Members
+├── Teams          (groups of members)
+├── Source Hosts   (GitHub, GitLab, Bitbucket connections)
+└── Projects
+    └── Apps       (one git repository each)
+```
+
+| Level | What it is | Contains |
+|---|---|---|
+| **Organization** | Your tenant — the top-level boundary that separates one company or workspace from another. Switch between organizations in the sidebar. | Members, teams, source hosts, projects |
+| **Team** | A named group of organization members (`platform`, `payments`). Each project belongs to at most one team. | Members (org-scoped), projects |
+| **Project** | A collection of apps that ship together (`orders-platform`). | Apps |
+| **App** | One git repository on a code host. Hub clones it on demand for git-flow audits, commits, branches, tags, releases, and configuration — it keeps no permanent local copy. | Git history, releases, pull requests, configuration |
+
+## Connecting a code host
+
+Go to **Settings → Connect a code host** to link GitHub, GitLab, or Bitbucket.
+
+**GitHub (recommended — two clicks):** Click **Create GitHub App**. Hub opens GitHub with a pre-filled manifest (permissions: contents, workflows, administration, pull requests, organization members; callback already set). Confirm the name, and the app's credentials land in Hub automatically. Then click **Install the app on GitHub** to authorize it on your account or organization, and finally **Connect with GitHub**. Tokens from a GitHub App expire and refresh automatically — you never need to rotate them by hand.
+
+If you already have an OAuth app, click **I already have one** and enter your credentials. Each provider's callback URL:
+
+| Provider | Register at | Callback URL |
+|---|---|---|
+| GitHub | Settings → Developer settings → OAuth Apps | `${PUBLIC_URL}/api/oauth/github/callback` |
+| GitLab | Preferences → Applications (scopes: `api write_repository read_user`) | `${PUBLIC_URL}/api/oauth/gitlab/callback` |
+| Bitbucket | Workspace settings → OAuth consumers (account; repositories write/admin; pull requests write) | `${PUBLIC_URL}/api/oauth/bitbucket/callback` |
+
+**Add with a token** is the manual path: choose the kind, enter the base URL (for self-hosted instances), username, token, and default owner.
+
+<Note>
+  Hub seals every token with AES-256-GCM (key derived from the auth secret) and only opens it inside the API when a request actually needs it. The browser never receives a token value.
+</Note>
+
+## Creating an app
+
+Start from **Projects → [your project] → New app**, or click any template card under **Templates** (which opens the wizard at the *Configure* step with type, stack, and template already filled in).
+
+The wizard walks you through six steps:
+
+| Step | What you do |
+|---|---|
+| **1. Type** | Choose `web`, `library`, `docs`, `plugin`, or `empty` |
+| **2. Stack** | Pick the language/framework stack filtered for your type |
+| **3. Template** | Select a template — the `Default` badge marks the recommended choice for each stack |
+| **4. Configure** | Set the app name (used as the directory and package name), description, project, source host and repository owner; optionally enable a CI provider, a Docker/cloud overlay, and whether to push to the remote immediately |
+| **5. Review** | Confirm the summary — Hub also shows the equivalent `action-platform init …` command you could run locally |
+| **6. Create** | Hub generates the app, creates the repository on your chosen code host, pushes `main`, and registers the app |
+
+To bring in a repository you already own, click **Add an existing repository** on the project page and paste the git URL. The repository must already contain a `platform.toml` — run `action-platform install` in it first if it doesn't. If `platform.toml` is missing, Hub offers to install it for you: choose the app type and CI provider, and Hub stages `platform.toml`, `.code_quality/`, CI files, and git hooks as pending edits. Nothing is pushed until you click **Commit changes**, which opens a `chore/<code>` branch and a pull request.
+
+## App page
+
+Every app has a dedicated page. From here you can:
+
+- **Sync** — run `git fetch` and fast-forward the local clone to the latest remote state, or **Push to remote** if no remote exists yet.
+- **Git-flow audit** — inspect whether the current branch and its commits follow your project's git-flow rules.
+- **Commits / Branches / Tags** — browse the repository's history and remote branches, labeled by their git-flow kind.
+- **Release** — cut a new version (see [Releases from the browser](#releases-from-the-browser) below).
+- **Activity** — start a `<kind>/<code>` branch, check out an existing branch, propose and open a pull request, and view all pull requests stored for the app (state, merged date, head → base).
+- **Configuration** — pick a deploy target (applies the cloud overlay from the templates repository), add a service, and edit `platform.toml`. All edits stay pending until you click **Commit changes**, which uses Conventional Commit format, always pushes, and optionally opens a pull request. On `main`/`master`/`develop`, Hub requires you to create a new `<kind>/<code>` branch — it starts the branch from the right base, commits there, pushes, and (if you asked) opens a PR.
+
+## Releases from the browser
+
+1. On the app page, click **Release**.
+2. Choose a level: `patch`, `minor`, or `major`.
+3. Click **Preview** to run a dry run — Hub shows the next version number and the generated changelog. Nothing is pushed.
+4. In the **Release** dialog, confirm. Hub tags the commit, pushes the tag, and publishes a GitHub/GitLab/Bitbucket release.
+
+<Note>
+  Releasing from any branch other than `main` or `master` produces an `-rc.N` pre-release tag automatically.
+</Note>
+
+## Import from GitHub
+
+**Import** (requires the **admin** role) lets you bulk-import an entire GitHub organization — or your connected account's own repositories — into the current Hub organization. Pick a connected GitHub host and the GitHub organization, then choose what to bring in:
+
+| What | Result |
+|---|---|
+| **GitHub Projects** (Projects v2) | Become Hub projects with the same name; linked repositories become their apps |
+| **Repositories** | Each becomes a project with one app, or all go into a single existing project you pick |
+| **Teams** | Become Hub teams with the same name; GitHub members already in the Hub org join them |
+| **People** | Matched by email — existing accounts join immediately; others receive an invitation link |
+
+The import runs as a background job. The page polls for progress and ends with a summary of what was created and what was skipped, with reasons.
+
+## Settings
+
+| Area | What you can do |
+|---|---|
+| **Members** | **Add member** (creates or attaches an account) or **Invite** (generates a shareable `/invite/<id>` link, valid 7 days) |
+| **Teams** | Create teams, add members, assign projects |
+| **Source hosts** | Add new connections, update tokens, remove connections |
+| **Commit identity** | Set the name and email Hub uses for release and configuration commits |
+| **Roles and permissions** | View the five-role matrix (`owner`, `admin`, `deployer`, `developer`, `viewer`) |
+| **Connected apps** | View and revoke your API tokens and active browser sessions |
+
+### Connected apps
+
+Click the **key icon** next to your name to open **Connected apps**. You'll see every API token linked to your account — its name, scope, reach, which programs have used it (Claude Code, Codex, Cursor, the CLI), when it was created, last used, and when it expires — plus all active browser sessions, each with a **Revoke** button. Revoking a session logs that browser out immediately.
+
+## Deleting apps and projects
+
+Deleting an app or project removes it from Hub and clears Hub's clones. **The repository on the code host is not deleted** unless you check **Also delete the repository** in the confirmation dialog.
+
+<Warning>
+  Deleting a repository also removes its branches, tags, releases, and pull requests on the code host and cannot be undone. A GitHub OAuth host connected before repository deletion was introduced may lack the `delete_repo` scope — reconnect it if the option is unavailable.
+</Warning>

@@ -1,0 +1,117 @@
+---
+title: "AI Agents and Hub: Connect Claude, Codex, and Cursor"
+sidebarTitle: "AI Agents"
+description: "Give Claude Code, Codex, or Cursor full awareness of your project, git state, and release pipeline through Hub's MCP server — safely scoped to your token."
+---
+
+Hub is built for AI-assisted development. The MCP server gives any AI agent — Claude Code, Codex, Cursor, or your own tooling — real awareness of your project structure, git history, and release pipeline. The agent works with the same tools you use directly: it scaffolds services, audits git-flow, opens pull requests, cuts releases, and manages deployments, all gated by your token's scope so it can only do what you've authorized.
+
+## What agents can do
+
+Connect an MCP client to Hub and your agent gains the ability to:
+
+- **Scaffold new services** — pick a type, stack, and template; generate the project; push to the code host; register it on the platform.
+- **Audit git-flow** — inspect branch names and commit messages against your project's rules and explain violations.
+- **Start branches** — create `feature/`, `hotfix/`, `chore/`, and other typed branches from the right base branch.
+- **Open pull requests** — generate a PR body from the branch's commits and target the correct base per the git-flow rules.
+- **Cut releases** — dry-run first to show the next version and changelog, then release on your confirmation.
+- **Deploy** — run a deployment preflight, present the plan, and execute on your approval.
+- **Diagnose** — inspect the health of a deploy target and surface configuration issues.
+
+All of these are scoped to what your token allows. An agent with a `read`-only token can inspect but never modify.
+
+## Quick setup for Claude Code
+
+<Steps>
+  <Step title="Install the MCP package">
+    ```bash
+    pip install "action-platform[mcp]"
+    ```
+  </Step>
+  <Step title="Add to Claude Code">
+    ```bash
+    /plugin marketplace add actionplatform/action-platform
+    /plugin install action-platform@action-platform
+    ```
+
+    Claude Code will start the MCP server automatically when you open a project.
+  </Step>
+  <Step title="(Optional) Log in for remote access">
+    If you want the agent to manage apps on a hosted Hub instance rather than local files, authenticate first:
+
+    ```bash
+    action-platform login https://<your-platform>
+    ```
+
+    Then update your Claude Code config to use `--remote` (see [Local vs remote](#local-vs-remote) below).
+  </Step>
+</Steps>
+
+## Quick setup for any MCP client
+
+Add the following to your `.mcp.json` file at the root of your project or in your home directory:
+
+```json
+{
+  "mcpServers": {
+    "action-platform": {
+      "command": "uvx",
+      "args": ["--from", "action-platform[mcp]", "action-platform-mcp"]
+    }
+  }
+}
+```
+
+**`uvx` vs direct command:** `uvx` fetches and runs `action-platform-mcp` in an isolated environment — no prior install needed. If you've already run `pip install "action-platform[mcp]"`, you can use `"command": "action-platform", "args": ["mcp"]` instead for a slightly faster startup.
+
+## Local vs remote
+
+Choose your mode based on where your work lives:
+
+| | **Local mode** | **Remote mode** |
+|---|---|---|
+| **Use when** | You're working on files on your local machine | You're managing apps on a hosted Hub instance |
+| **How to start** | `action-platform mcp` (default) | `action-platform mcp --remote` |
+| **Acts on** | The current directory and local git repo | Apps registered on the hosted platform |
+| **Tools available** | 17 tools (scaffold, git-flow, release, deploy) | 36 tools (all local tools plus org management, app configuration, and cross-project operations) |
+| **Needs login?** | No | Yes — run `action-platform login <url>` first |
+
+**Remote mode** is the right choice when you want the agent to manage multiple projects on a team platform, create apps, manage members, or operate against the same state the web app shows. Local mode is ideal for solo work on a single repository.
+
+## Scoping the agent's permissions
+
+When you authenticate with `action-platform login`, you choose the token's scope. Use a narrower scope to limit what the agent can do:
+
+```bash
+# Read-only assistant — can inspect, audit, and explain, but cannot modify anything
+action-platform login https://<platform> --scope read
+
+# Can scaffold, commit, and open PRs, but cannot cut releases or manage the org
+action-platform login https://<platform> --scope read,write
+
+# Full development lifecycle — can also cut releases and deploy
+action-platform login https://<platform> --scope read,write,release
+```
+
+<Note>
+  A token's scope can never exceed your role in the organization. If you're a `developer`, requesting `admin` scope has no effect — the server clamps it to what your role allows. The browser approval page shows exactly which scopes will be granted before you confirm.
+</Note>
+
+You can also limit the token's **reach** — to a single organization, project, or even a specific app — from the browser approval page. An agent with a project-scoped token cannot see or touch anything outside that project.
+
+## Orientation tools
+
+Before the agent takes any action, it uses a set of orientation tools to understand the environment:
+
+| Tool | What it tells the agent |
+|---|---|
+| `whoami` | Your account, organization, role, token scope, reach, and the resulting effective permissions |
+| `current_context` | Matches the local checkout's git remote to a platform app and shows what the token can do there |
+| `list_organizations` | Every organization you belong to, with your role and the scopes a token could get in each |
+| `list_projects` | All projects, teams, and apps within the token's reach |
+
+An agent asked "what can I do here?" answers from these tools without guessing. If the token doesn't have permission for an operation, the refused call names the missing permission or scope so the agent can explain the limitation clearly.
+
+<Tip>
+  Every Hub project includes an `AGENTS.md` file (added by `action-platform install` or `init`). This file tells the agent the project's git-flow rules, CI setup, and how to cut a release for that specific project. Keep it up to date — it's the single source of truth the agent reads before acting.
+</Tip>

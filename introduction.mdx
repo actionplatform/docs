@@ -1,0 +1,89 @@
+---
+title: "Hub: The Developer Platform for Any Stack and Cloud"
+sidebarTitle: "Introduction"
+description: "Hub gives every team a web app, a CLI, and an MCP server on one core — scaffold, govern, and ship any service in one command or one click."
+---
+
+Hub turns a week of scaffolding, CI wiring, versioning, and deploy plumbing into a single command — or a single click. Every app your team creates shares the same rails: the same git-flow, the same `platform.toml` manifest, the same cloud overlays, the same lifecycle verbs. The next service costs minutes, not days, and it never drifts from the last.
+
+## Three doors, one core
+
+Hub meets you wherever you work. All three interfaces share the same underlying engine and the same `platform.toml` manifest.
+
+### Web app
+
+The web app organises your work as **Organizations → Teams → Projects → Apps**. Invite members with one of five roles (`owner`, `admin`, `deployer`, `developer`, `viewer`), connect GitHub, GitLab, or Bitbucket in Settings, and create apps from official or custom templates — or import any existing repository. From the browser you can edit `platform.toml`, open pull requests, cut releases, and see activity across every app in one place.
+
+### CLI
+
+Install with `pipx install action-platform` and run the same verbs on your own machine:
+
+```bash
+pipx install action-platform           # CLI + library
+pip install "action-platform[mcp]"     # adds the MCP server
+```
+
+Key commands: `init`, `branch`, `pr`, `release`, `deploy`, `rollback`, `diagnose`. Every command also works against a hosted Hub instance once you run `action-platform login`.
+
+### MCP server
+
+Install the MCP extra and point Claude Code, Codex, or Cursor at Hub. The server exposes 36 tools that understand your current directory, your identity, your role, and what your token is allowed to do. Run locally or against a hosted platform after `action-platform login` — both modes use identical tools.
+
+## What you can build
+
+Every template ships with tests, lint, CI, and an `AGENTS.md` that orients both humans and AI agents.
+
+| Type | Stacks |
+|------|--------|
+| `web` | Python (FastAPI, FastMCP) · Go (Gin) · Node (Fastify, React) · Java (Spring) · Kotlin (Spring) · Ruby (Sinatra) |
+| `library` | Python · Go · PHP · Node · Java · Rust |
+| `docs` | MkDocs |
+| `plugin` | Chrome extension |
+| `empty` | `platform.toml` + code quality only |
+
+Your organization can add any git repository as a custom template. A plain starter becomes one option; a repository with an `index.toml` becomes a full catalog.
+
+## Cloud and services
+
+Cloud support is a layer you overlay on a project, not a fork of it. Swap targets without rewriting your code.
+
+**Cloud overlays**
+
+| Overlay | What it adds |
+|---------|-------------|
+| `aws/lambda` | SAM template, least-privilege IAM policy, Lambda-specific CI steps |
+| `aws/amplify` | Amplify deploy config, branch-based environments |
+| `docker` | Dockerfile, Compose file, container registry CI steps |
+
+**Services**
+
+| Service | Backends |
+|---------|---------|
+| `postgres` | `docker` (local / self-hosted) · `aws-rds` (managed) |
+
+## Why teams use Hub
+
+<CardGroup cols={2}>
+  <Card title="One-command lifecycle" icon="terminal">
+    `init` → `release` → `deploy` → `rollback` → `diagnose` → `destroy`. The same verbs work for a Python API on Lambda, a Go service in Docker, or a React app on Amplify.
+  </Card>
+  <Card title="Production templates" icon="box">
+    Every template is extracted from a real shipping product — real layout, real CI, real gotchas already fixed. Not a tutorial skeleton.
+  </Card>
+  <Card title="Cloud as a layer" icon="cloud">
+    Projects stay cloud-agnostic. Add `--cloud aws/lambda` at init, or overlay it later with one command. Swap targets without touching application code.
+  </Card>
+  <Card title="Your CI, your git, your account" icon="github">
+    Runs on GitHub Actions, GitLab CI, Jenkins, or Bitbucket Pipelines. Infra deploys into **your** AWS account via OIDC — no long-lived keys, no vendor in the middle.
+  </Card>
+  <Card title="Governance that ships with the code" icon="shield-check">
+    Git-flow and Conventional Commits are enforced by hooks before a commit exists and by CI on every PR. Changelogs are generated automatically. Trivy scans and least-privilege IAM ship in `requirements/`.
+  </Card>
+  <Card title="Roles and scoped tokens" icon="lock">
+    Five roles from `viewer` to `owner`. `action-platform login` mints a token scoped to `read`, `write`, `release`, or `admin` — capped to your role, targeted to an org, project, or app. Every token and session is visible and revocable in **Connected apps**.
+  </Card>
+</CardGroup>
+
+<Card title="Quickstart: up and running in five minutes" icon="rocket" href="/quickstart">
+  Install the CLI, scaffold your first app, open a PR, and cut a release.
+</Card>

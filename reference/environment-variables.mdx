@@ -1,0 +1,107 @@
+---
+title: "Hub CLI and MCP Server Environment Variables Reference"
+sidebarTitle: "Environment Variables"
+description: "All environment variables recognized by the Hub CLI and MCP server — source-host credentials, server connection, templates, storage, and error reporting."
+---
+
+Hub reads environment variables for source-host credentials and server configuration. All of these are optional — they override the values stored in `~/.action-platform/credentials.json` or the platform's settings. You can use them in local shells, Docker environments, or CI pipelines without running `action-platform login`.
+
+---
+
+## Source host credentials
+
+Use these variables to authenticate against a source host instead of relying on the `gh` or `glab` CLIs or a stored token.
+
+<ParamField path="ACTION_PLATFORM_GITHUB_TOKEN" type="string">
+  Personal access token or GitHub App installation token for GitHub. The CLI
+  uses this to create repositories, open pull requests, and publish releases.
+  `GH_TOKEN` is accepted as an alias, matching the GitHub CLI convention.
+</ParamField>
+
+<ParamField path="ACTION_PLATFORM_GITLAB_TOKEN" type="string">
+  GitLab personal access token. The CLI reads this for all GitLab API calls.
+  `GITLAB_TOKEN` is accepted as an alias.
+</ParamField>
+
+<ParamField path="ACTION_PLATFORM_BITBUCKET_TOKEN" type="string">
+  Bitbucket app password. Must be set together with
+  `ACTION_PLATFORM_BITBUCKET_USERNAME`.
+</ParamField>
+
+<ParamField path="ACTION_PLATFORM_BITBUCKET_USERNAME" type="string">
+  Bitbucket account username. Required whenever `ACTION_PLATFORM_BITBUCKET_TOKEN`
+  is set — Bitbucket's API uses HTTP Basic Auth with both values.
+</ParamField>
+
+---
+
+## Server and authentication
+
+<ParamField path="AP_SERVER" type="string">
+  URL of the Hub instance to connect to, e.g. `https://platform.example.com`.
+  Overrides the server recorded by `action-platform login` in the credentials
+  file.
+</ParamField>
+
+<ParamField path="AP_TOKEN" type="string">
+  Bearer token to send on every request to `AP_SERVER`. Overrides the token
+  stored by `action-platform login`. Combine with `AP_SERVER` to authenticate
+  non-interactively.
+</ParamField>
+
+<Note>
+  `AP_SERVER` and `AP_TOKEN` always take precedence over the credentials file
+  written by `action-platform login`. If both the file and the environment
+  variables are present, the environment variables win.
+</Note>
+
+<Tip>
+  For CI pipelines, set `AP_SERVER` and `AP_TOKEN` as repository secrets rather
+  than running `action-platform login` inside your workflow. This avoids storing
+  session tokens in runner caches and makes credential rotation straightforward.
+</Tip>
+
+---
+
+## Templates
+
+<ParamField path="ACTION_PLATFORM_TEMPLATES" type="string">
+  Absolute or relative path to a local checkout of the templates repository.
+  When set, `action-platform init`, `cloud set`, and `service add` read
+  templates from this directory instead of fetching them from the network.
+  Useful for developing or previewing custom templates.
+</ParamField>
+
+<ParamField path="ACTION_PLATFORM_TEMPLATES_REPO" type="string" default="actionplatform/templates">
+  URL or `owner/repo` slug of an alternative templates repository. The CLI
+  fetches the templates matrix from this repository when
+  `ACTION_PLATFORM_TEMPLATES` is not set. Change this to point at a private
+  fork or an internal mirror.
+</ParamField>
+
+---
+
+## Storage
+
+<ParamField path="AP_HOME" type="string" default="~/.action-platform">
+  Directory where the CLI stores `credentials.json` and where the API keeps
+  workspace clones. Changing this is useful when the home directory is
+  read-only, shared across users, or when you want to isolate multiple Hub
+  configurations on the same machine.
+</ParamField>
+
+---
+
+## Error reporting
+
+<ParamField path="AP_SENTRY_DSN" type="string">
+  Sentry DSN for CLI crash reporting. When set, unhandled exceptions are
+  captured and sent to your Sentry project. Error reporting is **off by
+  default** — you must also install the optional dependency:
+
+  ```bash
+  pip install "action-platform[sentry]"
+  ```
+
+  Without the extra install, setting this variable has no effect.
+</ParamField>

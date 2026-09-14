@@ -1,0 +1,142 @@
+---
+title: "platform.toml: The Project Manifest Explained"
+sidebarTitle: "platform.toml"
+description: "platform.toml is the single config file that declares everything Hub needs — project identity, source host, release strategy, deploy target, and services."
+---
+
+`platform.toml` is the single configuration file that declares everything Hub needs to know about your project. Templates generate it automatically, and every Hub operation — releases, deployments, branch management, CI — reads from it. You never need to pass the same flags twice.
+
+## Full example
+
+```toml
+[project]
+name = "orders"
+type = "web"
+stack = "python"
+template = "fastapi"
+language = "python"
+ci = "github"
+
+[source_host]
+kind = "github"
+repo = "acme/orders"
+# base_url = "https://github.acme.com"  # self-hosted only
+
+[release]
+strategy = "semver"
+changelog = "conventional"
+
+[deploy]
+target = "aws/lambda"
+
+[services]
+postgres = "aws-rds"
+
+# Multi-component repos only:
+# [components.api]
+# path = "action_platform/api"
+#
+# [components.web]
+# path = "apps/web"
+```
+
+## `[project]`
+
+Identifies the project and tells templates and CI scripts which toolchain to use.
+
+| Key | Description | Example values |
+|-----|-------------|----------------|
+| `name` | Human-readable project name | `"orders"` |
+| `type` | Project type | `web`, `library`, `automation`, `docs`, `plugin`, `empty` |
+| `stack` | Technology stack | `python`, `go`, `node`, `java`, `kotlin`, `ruby`, `php`, `rust` |
+| `template` | Template variant within the stack | `fastapi`, `gin`, `spring`, `poetry` |
+| `language` | Language identifier used by CI scripts to select setup and check commands | `python`, `go`, `node`, `java` |
+| `ci` | CI provider | `github`, `gitlab`, `jenkins`, `bitbucket` |
+
+**Read by:** templates, CI scripts, the web app's Configuration tab.
+
+## `[source_host]`
+
+Tells Hub where your repository lives and how to reach it.
+
+| Key | Description | Example values |
+|-----|-------------|----------------|
+| `kind` | Source host type | `github`, `gitlab`, `bitbucket`, `generic` |
+| `repo` | Repository path in `owner/name` format | `"acme/orders"` |
+| `base_url` | Base URL for self-hosted instances | `"https://github.acme.com"` |
+
+**Read by:** `action-platform init --push`, `action-platform release`, `action-platform pr`.
+
+## `[release]`
+
+Controls how Hub computes versions and generates changelogs.
+
+| Key | Description | Values |
+|-----|-------------|--------|
+| `strategy` | Versioning scheme | `"semver"` |
+| `changelog` | Changelog generation method | `"conventional"` |
+
+**Read by:** `action-platform release`.
+
+<Note>
+The `[release]` table is not editable from the web app's Configuration tab. Edit it directly in `platform.toml`.
+</Note>
+
+## `[deploy]`
+
+Declares the deployment target and any target-specific configuration.
+
+| Key | Description | Example values |
+|-----|-------------|----------------|
+| `target` | Deployment target | `aws/lambda`, `aws/amplify`, `docker` |
+| *(target-specific keys)* | Additional keys vary by target — SAM stack name, Amplify app ID, image registry, etc. | — |
+
+**Read by:** `action-platform deploy`, `action-platform rollback`, `action-platform diagnose`, `action-platform destroy`.
+
+## `[services]`
+
+Maps service names to their providers.
+
+```toml
+[services]
+postgres = "aws-rds"
+```
+
+Each entry is `<service> = "<provider>"`. Hub uses this to wire the right infrastructure and inject the right environment variables.
+
+**Read by:** `action-platform service add`, templates during `init`.
+
+## `[components.<name>]`
+
+For repositories that contain more than one independently versioned artifact, declare each component with its path.
+
+```toml
+[components.api]
+path = "action_platform/api"
+
+[components.web]
+path = "apps/web"
+```
+
+| Key | Description |
+|-----|-------------|
+| `path` | Path to the component root, relative to the repository root |
+
+**Read by:** `action-platform release --component <name>`.
+
+See [Releases](/concepts/releases) for how multi-component versioning works.
+
+## `LAST_VERSION` and `CHANGELOG.md`
+
+Two files sit alongside `platform.toml` and are managed entirely by Hub — do not edit them by hand.
+
+| File | What it contains | How Hub uses it |
+|------|-----------------|-----------------|
+| `LAST_VERSION` | The current version string, e.g. `0.3.2` | Starting point for computing the next version during `release` |
+| `CHANGELOG.md` | Rendered changelog in Keep a Changelog format | Prepended with new entries on every release |
+
+In multi-component repos, each component has its own `LAST_VERSION` and `CHANGELOG.md` under its `path`.
+
+<Note>
+All `[project]`, `[source_host]`, `[deploy]`, and `[services]` fields are also editable from the web app's **Configuration** tab, which writes the changes back to `platform.toml` and commits them. The `[release]` table is only editable in the file directly.
+</Note>

@@ -1,0 +1,98 @@
+---
+title: "Versioned Releases: Semver, Changelog, and Publishing"
+sidebarTitle: "Releases"
+description: "Hub automates semver releases end-to-end: preflight checks, version computation, changelog rendering, file updates, and publishing — all from one command."
+---
+
+Hub automates the entire release process end-to-end. One command runs preflight checks, computes the next version, renders a changelog from your commit history, updates all the right files, and publishes to your source host and package registry. You get a clean, auditable release every time without manually editing version files or writing release notes.
+
+## What a release does
+
+Every `action-platform release` run executes five steps in order:
+
+1. **Preflight checks** — refuses a dirty working tree, a version that already exists, or a tag that exists locally or on `origin`
+2. **Compute next version** — reads the current version from `LAST_VERSION` under the component path; on `main` or `master` (or with `--stable`) it produces `X.Y.Z`; on any other branch (or with `--rc`) it produces `X.Y.Z-rc.N`, counting only that component's existing release candidate tags
+3. **Render changelog** — gathers Conventional Commits since the component's last tag, limited to commits that touched the component path; for the root component, commits that touched a sub-component path are excluded
+4. **Update files** — writes `LAST_VERSION`, prepends `CHANGELOG.md`, and syncs `package.json`, `pyproject.toml`, or `__version__` under the component path to the new version
+5. **Commit, tag, push, and publish** — commits `chore(release): [<name> ]X.Y.Z`, creates the tag, pushes both, and publishes a release on the source host (marked pre-release for release candidates)
+
+<Note>
+If the push is refused because the remote branch moved ahead, Hub deletes the tag and the commit so nothing half-published stays in your workspace. The hosted API syncs the workspace before step 1 (fetch and fast-forward), so this situation is rare.
+</Note>
+
+## Stable vs pre-release
+
+The branch you are on determines the version format:
+
+| Branch | Version format | Example |
+|--------|----------------|---------|
+| `main` or `master` | Stable `X.Y.Z` | `1.4.0` |
+| Any other branch | Pre-release `X.Y.Z-rc.N` | `1.4.0-rc.3` |
+
+You can override this with `--stable` or `--rc` flags regardless of branch. Release candidate numbering (`rc.N`) counts only existing tags for the current component, so concurrent components on the same branch have independent rc sequences.
+
+## Multi-component repos
+
+A single repository can contain multiple independently versioned components. Declare them in `platform.toml`:
+
+```toml
+[components.api]
+path = "action_platform/api"
+
+[components.web]
+path = "apps/web"
+```
+
+Each component gets its own `LAST_VERSION`, `CHANGELOG.md`, version files, tags, and publish target:
+
+| Component | Path | Command | Tag format | Publishes to |
+|-----------|------|---------|------------|--------------|
+| Root CLI + library | `.` | `action-platform release minor` | `v0.3.0` | `action-platform` on PyPI |
+| `api` | `action_platform/api` | `action-platform release --component api patch` | `api/v0.1.2` | `actionplatformio/action-platform-api` on Docker Hub + GHCR |
+| `web` | `apps/web` | `action-platform release --component web minor` | `web/v0.2.0` | `actionplatformio/action-platform-web` on Docker Hub + GHCR |
+
+The root component's changelog excludes commits that only touched a sub-component path. Each component's changelog includes only commits that touched its path.
+
+## Dry run
+
+Add `--dry-run` to stop after step 3 and print the computed version and rendered changelog without writing or pushing anything.
+
+```bash
+action-platform release minor --dry-run
+```
+
+This is useful for previewing what a release will contain before you commit to it.
+
+## CLI reference
+
+```bash
+action-platform release [patch|minor|major|X.Y.Z] [--dry-run] [--rc|--stable] [--component <name>]
+```
+
+| Argument / flag | Description |
+|-----------------|-------------|
+| `patch` / `minor` / `major` | Bump type — increments the corresponding version segment |
+| `X.Y.Z` | Explicit version — skips bump calculation and uses this exact version |
+| `--dry-run` | Stop after step 3; print version and changelog, change nothing |
+| `--rc` | Force a pre-release version even on `main` or `master` |
+| `--stable` | Force a stable version even off `main` or `master` |
+| `--component <name>` | Release a specific component declared in `[components.<name>]` |
+
+**Examples:**
+
+```bash
+# Patch release from main → publishes 1.2.4 stable
+action-platform release patch
+
+# Minor pre-release from a feature branch → publishes 1.3.0-rc.1
+action-platform release minor
+
+# Preview a major release without changing anything
+action-platform release major --dry-run
+
+# Release only the api component
+action-platform release --component api patch
+
+# Force a specific version
+action-platform release 2.0.0
+```

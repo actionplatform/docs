@@ -1,0 +1,231 @@
+---
+title: "platform.toml Reference: Every Table and Key Explained"
+sidebarTitle: "platform.toml"
+description: "Complete reference for platform.toml — the single file that declares your Hub project's scaffolding, release strategy, deploy target, and services."
+---
+
+`platform.toml` sits at the root of every Hub project and declares everything the platform needs to scaffold, release, and deploy your service. The CLI reads it during `init`, `release`, `deploy`, and related commands; the web app's **Configuration** tab displays and edits the same file.
+
+## Full example
+
+```toml
+[project]
+name = "orders"
+type = "web"
+stack = "python"
+template = "fastapi"
+ci = "github"
+language = "python"
+
+[source_host]
+kind = "github"
+repo = "acme/orders"
+
+[release]
+strategy = "semver"
+changelog = "conventional"
+
+[deploy]
+target = "aws/lambda"
+
+[services]
+postgres = "aws-rds"
+
+[components.web]
+path = "apps/web"
+
+[components.api]
+path = "action_platform/api"
+```
+
+---
+
+## `[project]`
+
+Core metadata consumed by templates, CI scripts, and the web app.
+
+<ParamField path="name" type="string" required>
+  Short identifier for your project. Used as the repository name, package name,
+  and display name throughout the platform.
+</ParamField>
+
+<ParamField path="type" type="string" required>
+  The project archetype. Accepted values:
+
+  | Value | Description |
+  |---|---|
+  | `web` | Full-stack or backend web service |
+  | `library` | Reusable package published to a registry |
+  | `docs` | Documentation site |
+  | `plugin` | Platform plugin |
+  | `empty` | Bare scaffold with no template applied |
+</ParamField>
+
+<ParamField path="stack" type="string">
+  Runtime or framework family. Accepted values: `python`, `go`, `node`, `java`,
+  `kotlin`, `ruby`, `php`, `rust`, `mkdocs`, `chrome`.
+</ParamField>
+
+<ParamField path="template" type="string">
+  Specific cookiecutter template to render, e.g. `fastapi`, `gin`, `express`.
+  Run `action-platform init --list` to see all available templates for your
+  chosen `type` and `stack`.
+</ParamField>
+
+<ParamField path="language" type="string">
+  Primary programming language. Controls which setup and check commands the CI
+  scripts run. Common values: `python`, `go`, `node`, `java`, `kotlin`, `ruby`,
+  `php`, `rust`.
+</ParamField>
+
+<ParamField path="ci" type="string">
+  CI provider to generate workflow files for. Accepted values: `github`,
+  `gitlab`, `jenkins`, `bitbucket`.
+</ParamField>
+
+---
+
+## `[source_host]`
+
+Tells the CLI where to create repositories, open pull requests, and publish releases.
+
+<ParamField path="kind" type="string" required>
+  Source hosting provider. Accepted values: `github`, `gitlab`, `bitbucket`,
+  `generic`.
+</ParamField>
+
+<ParamField path="repo" type="string" required>
+  Repository in `owner/name` format, e.g. `acme/orders`. The CLI uses this when
+  pushing the initial commit, opening PRs, and publishing release notes.
+</ParamField>
+
+<ParamField path="base_url" type="string">
+  Base URL of a self-hosted instance, e.g. `https://gitlab.example.com`. Omit
+  this key for cloud-hosted providers (github.com, gitlab.com, bitbucket.org).
+</ParamField>
+
+---
+
+## `[release]`
+
+Controls how `action-platform release` versions and documents your project.
+
+<ParamField path="strategy" type="string" default="semver">
+  Versioning scheme to apply. Currently `semver` is the supported strategy.
+  `release` will bump the `MAJOR`, `MINOR`, or `PATCH` component based on the
+  keyword you pass (`major`, `minor`, `patch`, or an explicit `X.Y.Z`).
+</ParamField>
+
+<ParamField path="changelog" type="string" default="conventional">
+  Format used to generate `CHANGELOG.md` entries. `conventional` parses
+  [Conventional Commits](https://www.conventionalcommits.org/) since the last
+  tag and groups them by type (`feat`, `fix`, `chore`, etc.).
+</ParamField>
+
+---
+
+## `[deploy]`
+
+Configures the deployment target that `action-platform deploy`, `rollback`,
+`diagnose`, and `destroy` operate against.
+
+<ParamField path="target" type="string" required>
+  Deployment destination. Built-in values:
+
+  | Value | Description |
+  |---|---|
+  | `aws/lambda` | AWS Lambda via SAM |
+  | `aws/amplify` | AWS Amplify hosting |
+  | `docker` | Generic Docker / Compose target |
+
+  You can also specify the name of a custom deploy plugin installed in your
+  environment. Target-specific keys (e.g. `region`, `function_name`) are placed
+  in the same table alongside `target`.
+</ParamField>
+
+---
+
+## `[services]`
+
+Declares backing services your project depends on, as `<service> = "<provider>"`
+pairs. The `service add` command and templates use this table to provision or
+wire up resources.
+
+```toml
+[services]
+postgres = "aws-rds"     # managed RDS instance
+redis    = "docker"      # local Docker container
+```
+
+Each key is an arbitrary service name; the value is the provider identifier.
+Common providers include `aws-rds`, `docker`, and any custom provider from an
+installed plugin.
+
+---
+
+## `[components.<name>]`
+
+Defines a named component within a monorepo so you can release it independently
+with `action-platform release --component <name>`.
+
+<ParamField path="path" type="string" required>
+  Subdirectory containing the component's source, relative to the repository
+  root. For example:
+
+  ```toml
+  [components.web]
+  path = "apps/web"
+
+  [components.api]
+  path = "action_platform/api"
+  ```
+
+  Each component gets its own `LAST_VERSION` tracking and `CHANGELOG.md` inside
+  its `path` directory.
+</ParamField>
+
+---
+
+## `LAST_VERSION`
+
+`LAST_VERSION` is a plain-text file that lives next to `platform.toml` and
+holds the project's current version string, for example:
+
+```
+0.11.0
+```
+
+- **Set by `action-platform install`** — reads the newest `vX.Y.Z` tag in the
+  repository and writes that version, or `0.0.0` when no tags exist.
+- **Updated by `action-platform release`** — after every successful release the
+  new version is written here automatically.
+- **Used by `action-platform release`** — the release command reads `LAST_VERSION`
+  to determine the baseline before computing the next version number, and refuses
+  to proceed if the computed next version already exists as a tag.
+
+Do not edit `LAST_VERSION` by hand; let the CLI keep it in sync.
+
+---
+
+## `CHANGELOG.md`
+
+`CHANGELOG.md` is auto-generated and maintained by `action-platform release`.
+On every release, the command:
+
+1. Collects all Conventional Commits since the last `vX.Y.Z` tag.
+2. Groups them by type (`feat`, `fix`, `chore`, breaking changes, etc.).
+3. **Prepends** the new section to the top of `CHANGELOG.md`, preserving
+   previous entries below it.
+4. Stages the file as part of the `chore(release): X.Y.Z` commit.
+
+You can read `CHANGELOG.md` at any time as a human-readable history of every
+release. Avoid editing it manually — the next release will prepend to whatever
+content is there, so manual edits persist but may look inconsistent.
+
+---
+
+<Note>
+  All `platform.toml` values are also editable from the **Configuration** tab
+  in the Hub web app. Changes made there become pending edits that you can
+  review and ship as a pull request — no local checkout required.
+</Note>

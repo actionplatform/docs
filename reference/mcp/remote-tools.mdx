@@ -1,0 +1,173 @@
+---
+title: "MCP Remote Tools Reference for Hub"
+sidebarTitle: "Remote Tools"
+description: "Complete reference for the 36 tools available in remote MCP mode — manage apps, teams, releases, and deployments on your hosted Hub instance."
+---
+
+In remote mode (`action-platform mcp --remote`), your AI agent gets **36 tools** that act on apps running on your hosted Hub instance. Every call is authenticated with the JWT issued by `action-platform login` and sent as a `Bearer` token to `/api/v1/*`, where Hub's gate enforces your role, token scope, and reach.
+
+## Prerequisites
+
+Log in before starting the MCP server:
+
+```bash
+action-platform login https://<your-platform>
+```
+
+Use `--scope` to limit what the token (and therefore your agent) can do:
+
+```bash
+action-platform login https://<your-platform> --scope read           # read-only assistant
+action-platform login https://<your-platform> --scope read,write,release  # ships, but cannot manage org
+```
+
+## Tools
+
+<AccordionGroup>
+
+  {/* ── Orientation ─────────────────────────────────────────── */}
+  <Accordion title="Orientation (4 tools)">
+    Use these tools to orient the agent before anything else. An agent asked
+    "what can I do here?" can answer entirely from these tools without guessing.
+
+    | Tool | Description |
+    |---|---|
+    | `whoami` | Return your account, organization, role, token scope and reach, and the resulting set of permissions |
+    | `current_context` | Match the local checkout's git remote to a platform app and report what the token may do there |
+    | `list_organizations` | List every organization you belong to, including your role and the scopes a token could receive |
+    | `gitflow_rules` | Return the git-flow branch naming and commit message rules for the current project or app |
+
+    When the token spans multiple organizations, `list_organizations` accepts an
+    `organization` argument (id or slug) to scope the response.
+  </Accordion>
+
+  {/* ── Projects & Teams ─────────────────────────────────────── */}
+  <Accordion title="Projects & Teams (8 tools)">
+    Explore and manage the projects, teams, and members within your
+    organization's reach.
+
+    | Tool | Description |
+    |---|---|
+    | `list_projects` | List projects, teams, and apps within the token's reach; answers across all organizations when the token is not scoped to one |
+    | `list_teams` | List teams in the organization; accepts `organization` argument when the token spans multiple orgs |
+    | `list_members` | List members of the organization or a specific team |
+    | `create_project` | Create a new project in the organization _(admin scope + role required)_ |
+    | `create_team` | Create a new team _(admin scope + role required)_ |
+    | `add_team_member` | Add a user to a team _(admin scope + role required)_ |
+    | `assign_project_team` | Assign a team to a project _(admin scope + role required)_ |
+    | `set_member_role` | Set a member's role in the organization _(admin scope + role required)_ |
+
+    <Warning>
+      Management tools (`create_project`, `create_team`, `add_team_member`,
+      `assign_project_team`, `set_member_role`) require the `admin` token scope
+      **and** an `admin` or `owner` role. A refused call names the missing
+      permission or scope explicitly.
+    </Warning>
+  </Accordion>
+
+  {/* ── Apps ─────────────────────────────────────────────────── */}
+  <Accordion title="Apps (10 tools)">
+    Manage the lifecycle of apps registered on the platform.
+
+    | Tool | Description |
+    |---|---|
+    | `list_apps` | List all apps within the token's reach; answers across all organizations without an `organization` argument |
+    | `add_app` | Register an existing repository as a new app on the platform |
+    | `init_app` | Initialise a newly added app (create workspace, first sync) |
+    | `remove_app` | Remove an app from the platform (does not delete the source repository) |
+    | `sync_app` | Synchronise the platform's workspace with the latest commits from the app's repository |
+    | `app_info` | Return detailed information about an app: config, current branch, last deploy status |
+    | `app_commits` | List commits on the app's current or specified branch |
+    | `app_branches` | List branches in the app's repository |
+    | `app_tags` | List tags in the app's repository |
+    | `app_releases` | List releases created for the app on the platform |
+  </Accordion>
+
+  {/* ── Git-Flow ─────────────────────────────────────────────── */}
+  <Accordion title="Git-Flow (5 tools)">
+    Enforce and automate git-flow on remote apps.
+
+    | Tool | Description |
+    |---|---|
+    | `gitflow_audit` | Audit the app's current branch name and commits against the project's git-flow rules |
+    | `start_branch` | Create a git-flow branch from `develop` or `main` on the remote app |
+    | `checkout_branch` | Check out an existing branch on the platform workspace |
+    | `propose_pull_request` | Determine the target branch and generate a PR body from rules and commits |
+    | `open_pull_request` | Open the pull request on the configured code host; the platform injects host credentials automatically |
+  </Accordion>
+
+  {/* ── Configuration ────────────────────────────────────────── */}
+  <Accordion title="Configuration (5 tools)">
+    Read and modify an app's manifest and service configuration on the platform
+    workspace.
+
+    | Tool | Description |
+    |---|---|
+    | `read_manifest` | Read the app's current `platform.toml` from the workspace |
+    | `write_manifest` | Write changes to the app's `platform.toml` in the workspace |
+    | `set_cloud` | Apply a cloud overlay (`aws/lambda`, `aws/amplify`, `docker`) to the workspace |
+    | `add_service` | Add a backing service (`postgres` with `docker` or `aws-rds`) to the workspace |
+    | `commit_changes` | Commit workspace changes; automatically creates a `<kind>/<code>` branch when on a protected branch |
+
+    See [Editing workflow](#editing-workflow) below for how these tools fit together.
+  </Accordion>
+
+  {/* ── Release & Deploy ─────────────────────────────────────── */}
+  <Accordion title="Release & Deploy (3 tools)">
+    Cut releases and ship to production — safely, with dry runs by default.
+
+    | Tool | Description |
+    |---|---|
+    | `release` | Cut a versioned release; stable versions from `main`/`master`, pre-release (`X.Y.Z-rc.N`) from any other branch |
+    | `deploy` | Deploy the app to its configured cloud target |
+    | `diagnose` | Run the deploy target's health check and return a structured report |
+
+    Both `release` and `deploy` default to `dry_run=true`. See [Safe-by-default](#safe-by-default) below.
+  </Accordion>
+
+  {/* ── Templates ────────────────────────────────────────────── */}
+  <Accordion title="Templates (1 tool)">
+    | Tool | Description |
+    |---|---|
+    | `list_matrix` | List available project templates — both the official repository and every custom template repository the organization has added under **Templates** in Hub. Address custom entries with `source=<name>`. |
+  </Accordion>
+
+</AccordionGroup>
+
+## Editing workflow
+
+Modifying an app's configuration follows a three-step loop that mirrors the Hub
+web UI:
+
+1. **Modify the workspace** — call `write_manifest`, `set_cloud`, and/or
+   `add_service` as needed. Each call updates the workspace but does not commit.
+2. **Commit** — call `commit_changes`.
+   - If the workspace is on a protected branch, Hub automatically creates a new
+     `<kind>/<code>` branch (using `branch_kind` + `branch_code` parameters).
+   - Pass `pull_request=true` to push the branch and open a PR in the same
+     call.
+3. **Review** — use `gitflow_audit` or `propose_pull_request` if you want the
+   agent to validate the change before it merges.
+
+Hub's `/api/v1` proxy injects the organization's code-host credentials, so
+private repositories, pushes, and pull requests all work without any additional
+token on the client.
+
+## Safe-by-default
+
+`release` and `deploy` always default to `dry_run=true`. Your agent will show
+you the outcome of the dry run and ask for explicit confirmation before calling
+either tool with `dry_run=false`.
+
+## Permissions reference
+
+A call is allowed only when **all three** gates pass:
+
+| Gate | What it checks |
+|---|---|
+| **Role** | Your role in the organization: `viewer`, `developer`, `deployer`, `admin`, or `owner` |
+| **Scope** | The token's scope: `read`, `write`, `release`, or `admin` |
+| **Reach** | Whether the token is limited to one organization, project, or app |
+
+A refused call always names the missing permission or scope so you know exactly
+what to change.

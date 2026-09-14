@@ -1,20 +1,91 @@
 ---
-title: "Introduction"
-description: "Welcome to your project"
+title: "Hub: Your Platform Team as a CLI, Web App, and AI Agent"
+sidebarTitle: "Home"
+description: "Hub scaffolds, releases, and deploys any service on any stack and cloud — from one command or one browser tab, with git-flow enforced and MCP for AI agents."
 ---
 
-Write a short description of your product here. What it does, who it's for, and what they can accomplish with it.
+Hub is your internal developer platform: scaffold a new service, enforce git-flow, cut a versioned release, and deploy to AWS or Docker — all from the same set of commands in the terminal, in the browser, or through an AI agent. Every project follows the same rails so nothing drifts.
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Create your first app in under five minutes with the CLI or web app.
+  </Card>
+  <Card title="Self-Hosting" icon="server" href="/self-hosting">
+    Run Hub on your own infrastructure with a single install command.
+  </Card>
+  <Card title="Using the Web App" icon="browser" href="/guides/web-app">
+    Manage organizations, projects, and apps from the browser.
+  </Card>
+  <Card title="MCP for AI Agents" icon="robot" href="/guides/ai-agents">
+    Connect Claude Code, Codex, or Cursor to your platform via MCP.
+  </Card>
+</CardGroup>
+
+## Three ways to use Hub
+
+Hub exposes the same core operations through three interfaces — pick the one that fits your workflow:
+
+<CardGroup cols={3}>
+  <Card title="CLI" icon="terminal" href="/guides/cli">
+    `pipx install action-platform` and run `init`, `branch`, `pr`, `release`, `deploy` on your machine.
+  </Card>
+  <Card title="Web App" icon="window" href="/guides/web-app">
+    Organizations, teams, projects, and apps with roles and permissions — all from a browser.
+  </Card>
+  <Card title="MCP Server" icon="plug" href="/guides/mcp">
+    17 local tools or 36 remote tools for AI agents, with scoped tokens and full audit trail.
+  </Card>
+</CardGroup>
+
+## Key concepts
+
+<CardGroup cols={2}>
+  <Card title="Git-Flow" icon="code-branch" href="/concepts/git-flow">
+    Branch naming, Conventional Commits, and PR targets enforced by hooks and CI.
+  </Card>
+  <Card title="Templates" icon="copy" href="/concepts/templates">
+    Production-grade cookiecutters for every stack, with tests, lint, and CI wired in.
+  </Card>
+  <Card title="platform.toml" icon="file-code" href="/concepts/manifest">
+    The single config file that declares your project's stack, deploy target, and services.
+  </Card>
+  <Card title="Releases" icon="tag" href="/concepts/releases">
+    Semantic versioning, changelog generation, and publishing to PyPI, npm, or Docker.
+  </Card>
+  <Card title="Access Control" icon="shield" href="/concepts/access-control">
+    Roles, scoped tokens, and reach — who can do what, where.
+  </Card>
+  <Card title="CLI Reference" icon="book" href="/reference/cli/scaffold">
+    Complete reference for every `action-platform` command and flag.
+  </Card>
+</CardGroup>
+
+## Getting started in 3 steps
+
+<Steps>
+  <Step title="Install the CLI">
+    ```bash
+    pipx install action-platform
+    ```
+    Or open your hosted Hub instance in a browser — no installation needed.
+  </Step>
+  <Step title="Scaffold your first app">
+    ```bash
+    action-platform init web python fastapi --name orders --cloud aws/lambda
+    ```
+    Hub creates a FastAPI project with tests, CI, an IAM policy, and a SAM template — and pushes it to GitHub.
+  </Step>
+  <Step title="Ship your first release">
+    ```bash
+    action-platform branch feature 1 hello-world
+    git commit -m "feat: say hello"
+    action-platform pr
+    action-platform release minor
+    ```
+    A tagged release appears on GitHub with a generated changelog.
+  </Step>
+</Steps>
 
 <Tip>
-  Ready to make this your own? Start by editing this page. Update your `docs.json` file to customize your site. Then fill out the [Quickstart](/quickstart) page.
+  Already have a repository? Run `action-platform install` inside it to add `platform.toml`, git hooks, and CI files without overwriting anything.
 </Tip>
-
-<Card title="Quickstart" icon="rocket" href="/quickstart">
-  This card links to the quickstart page in your project.
-</Card>
-<Card title="Components" icon="puzzle-piece" href="https://mintlify.com/docs/components">
-  Add cards, callouts, steps, tabs, and more to design and structure your pages.
-</Card>
-<Card title="Settings" icon="gear" href="https://mintlify.com/docs/organize/settings">
-  Set your site name, branding, and navigation in the `docs.json` file.
-</Card>

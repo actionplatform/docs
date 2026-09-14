@@ -1,0 +1,86 @@
+---
+title: "Roles, Scopes, and Tokens in Hub"
+sidebarTitle: "Access Control"
+description: "Hub access control has three layers: roles set what you can do, scopes limit what a token may do on your behalf, and reach defines where it applies."
+---
+
+Hub access control has three independent layers. **Roles** say what a person can do in an organization. **Scopes** say what a token may do on that person's behalf. **Reach** says where. Every request through `/api/v1` must satisfy all three; a browser session uses the role alone.
+
+## Roles
+
+Roles are assigned per organization under **Settings → Members**. Every person in an organization has exactly one role there.
+
+| Role | Permissions |
+|------|-------------|
+| `owner` | Everything. At least one owner per organization; the last owner cannot be demoted. |
+| `admin` | `org.manage`, `project.manage`, `app.release`, `app.configure`, `app.flow`, `app.sync` |
+| `deployer` | `app.release`, `app.configure`, `app.flow`, `app.sync` |
+| `developer` | `app.configure`, `app.flow`, `app.sync` |
+| `viewer` | Read only |
+
+## Permissions
+
+| Permission | Grants |
+|------------|--------|
+| `org.manage` | Manage members, invitations, teams, source hosts, commit identity, and organization settings |
+| `project.manage` | Create and delete projects; add and remove apps |
+| `app.release` | Create releases |
+| `app.configure` | Edit `platform.toml`, deploy target, and services; install platform files; commit configuration changes |
+| `app.flow` | Start branches, check out, push, and open pull requests |
+| `app.sync` | Sync the workspace with the source host |
+
+The web app reads `grants` from your session and the permission table from `GET /api/v1/access` to hide or disable controls you cannot use — it holds no local copy of the rules.
+
+## Token scopes
+
+When you run `action-platform login`, you choose which scopes the resulting token carries. The approval page pre-selects only what your role allows, and `POST /api/v1/tokens` clamps the request the same way.
+
+| Scope | Unlocks |
+|-------|---------|
+| `read` | Always present. List projects, apps, releases, branches, and activity. |
+| `write` | `app.configure`, `app.flow`, `app.sync` |
+| `release` | `app.release` |
+| `admin` | `project.manage`, `org.manage` |
+
+<Warning>
+**Scope never widens a role.** A `developer` with a `release`-scoped token still cannot release — the token can only do what the role already permits. An `owner` with a `read`-scoped token can only look.
+</Warning>
+
+## Token reach
+
+Reach limits which resources a token can see and act on, chosen at the same time as scopes during device authorization.
+
+| Reach | Effect |
+|-------|--------|
+| **One organization** | Every call acts on that organization; the role is that organization's role. |
+| **All organizations** | The role is checked in the organization each call touches — the app's own for app routes, or the value of `X-Organization: <id or slug>` (or `?organization=`) for organization-level routes. `GET /apps` and `GET /projects` return results across all organizations. |
+| **One project** | Only that project's apps are visible; the token cannot add apps or manage the organization. |
+| **One app** | Only that app. |
+
+Narrowing reach is useful for automation: a token scoped to a single app with `release` reach can publish that app's releases and nothing else.
+
+## Getting a token
+
+```bash
+action-platform login <url> [--scope read,write] [--name label]
+```
+
+| Flag | Description |
+|------|-------------|
+| `<url>` | The Hub instance URL |
+| `--scope` | Comma-separated list of scopes to request. Defaults to all scopes your role allows. |
+| `--name` | A label for the token, shown in **Connected apps** |
+
+Running this command starts a **device flow**: Hub prints a short code and opens your browser. Approve the request there — choosing scopes, reach, and organization — and the CLI receives a 90-day JWT (30 days when the `admin` scope is included).
+
+The token is stored locally and sent as a `Bearer` token on every API request. It is tied to a row in `api_token`; revoking that row invalidates the token on the next request.
+
+## Managing tokens
+
+Open **Connected apps** (the key icon next to your name) to see all your tokens across organizations, with scope, reach, and the programs using them listed for each. Browser sessions appear here too. You can revoke any token or session from this page.
+
+The MCP server reports its client on every call (`clientInfo`: Claude Code, Codex, Cursor, etc.), which is visible in the **Connected apps** list so you can see exactly which tools are acting on your behalf.
+
+<Note>
+Commits that Hub makes on your behalf — releases, configuration changes — use the organization's commit identity, configured under **Settings → Commit identity** (default: `Action Platform <cloud@actionplatform.io>`). This is separate from your personal token.
+</Note>

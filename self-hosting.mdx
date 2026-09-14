@@ -1,0 +1,151 @@
+---
+title: "Self-Host Hub on Your Own Server or Bare-Metal VPS"
+sidebarTitle: "Self-Hosting"
+description: "Run Hub on any Ubuntu or Debian host with one curl command, or deploy to Dokploy in minutes using a pre-built template or a manual Compose setup."
+---
+
+Hub is designed to run on infrastructure you own and control. A single shell script handles everything from installing Docker to issuing a TLS certificate. If you already use Dokploy, a pre-built template gets you up in a few clicks. All state lives in one Postgres volume — straightforward to back up and restore.
+
+## One-command install
+
+On a fresh Ubuntu or Debian host, run as root:
+
+```bash
+# Plain HTTP — Hub is available at http://<public-ip>:3000
+curl -fsSL https://raw.githubusercontent.com/actionplatform/action-platform/master/deploy/install.sh | sudo sh
+
+# With a domain and TLS — point your DNS A record at the host first
+curl -fsSL https://raw.githubusercontent.com/actionplatform/action-platform/master/deploy/install.sh | sudo sh -s -- platform.example.com you@example.com
+```
+
+The script does the following:
+
+1. Installs Docker if it isn't already present
+2. Generates fresh secrets (`POSTGRES_PASSWORD`, `BETTER_AUTH_SECRET`, `AP_API_TOKEN`) and writes them to `/opt/action-platform/.env`
+3. Starts **Postgres**, the **API**, and the **web app** with Docker Compose
+4. When you supply a domain and email, adds **Traefik** with an automatic Let's Encrypt certificate
+5. Prints the URL where Hub is now running
+
+Running the script again on an existing installation keeps your `.env` intact, pulls the latest images, and restarts the services — that's the upgrade path.
+
+## Dokploy
+
+Dokploy already runs its own Traefik instance, so the Hub compose file for Dokploy has no built-in proxy and publishes no ports directly. Choose either path below.
+
+### Template (nothing to type)
+
+The fastest way to get running on Dokploy — secrets and the domain stub are generated for you:
+
+<Steps>
+
+<Step title="Create a Compose service">
+In your Dokploy project, click **Create Service → Compose**, give it a name, and click **Create**.
+</Step>
+
+<Step title="Import the template">
+Inside the service, open **Advanced → Import Template** (or switch to the *Raw* tab and click *Import*). Paste the full contents of [`deploy/dokploy/template.b64`](https://github.com/actionplatform/action-platform/blob/master/deploy/dokploy/template.b64) and confirm the import. The Compose config, environment variables, and an initial `web` domain are filled in automatically. The host defaults to `<app>-<random>.<server-ip>.traefik.me`.
+</Step>
+
+<Step title="Set your domain">
+Go to **Domains**, edit the auto-generated host to your real domain, and enable **HTTPS**. Then open **Environment** and update `PUBLIC_URL` to match — for example `https://platform.example.com`.
+</Step>
+
+<Step title="Deploy">
+Click **Deploy**. Dokploy's Traefik handles TLS automatically.
+</Step>
+
+</Steps>
+
+### By hand
+
+If you prefer to configure everything explicitly:
+
+<Steps>
+
+<Step title="Create a Compose service">
+Click **Create Service → Compose**. Set the provider to *Git*, point it at `https://github.com/actionplatform/action-platform`, branch `master`, compose path `deploy/docker-compose.dokploy.yml`.
+</Step>
+
+<Step title="Set environment variables">
+Open **Environment** and add these four variables (generate secrets with `openssl rand -hex 32`):
+
+```
+PUBLIC_URL=https://platform.example.com
+POSTGRES_PASSWORD=<generated>
+BETTER_AUTH_SECRET=<generated>
+AP_API_TOKEN=<generated>
+```
+
+Save before deploying — the service fails with an unhealthy Postgres if these are empty.
+</Step>
+
+<Step title="Add your domain">
+Go to **Domains → Add**. Set your host, point it at service `web`, container port `3000`, and enable HTTPS.
+</Step>
+
+<Step title="Deploy">
+Click **Deploy**. For future upgrades, click **Redeploy** — Dokploy pulls the latest images automatically.
+</Step>
+
+</Steps>
+
+## Services
+
+These are the containers Hub runs. You interact with Hub through the browser and CLI — you don't configure the containers directly.
+
+| Service | Image | Role |
+|---------|-------|------|
+| `postgres` | `postgres:16-alpine` | Primary database; state lives in the `pgdata` volume |
+| `api` | `actionplatformio/action-platform-api` | Python API; stateless — clones are created in a temp dir per request |
+| `worker` | `actionplatformio/action-platform-api` | Same image, runs `action-platform worker`; handles queued syncs, releases, and deploys |
+| `web` | `actionplatformio/action-platform-web` | Next.js front end; stateless; listens on port 3000 |
+| `traefik` | `traefik:v3.3` | Reverse proxy and TLS termination; only included with `--profile tls` (plain HTTP install) or Dokploy's built-in Traefik |
+
+## First-run setup wizard
+
+After the services start, open the URL in your browser. The setup wizard walks you through four steps:
+
+<Steps>
+
+<Step title="Create the first account">
+Register the initial admin account. This becomes the platform owner.
+</Step>
+
+<Step title="Create an organization">
+Name your organization. Everything in Hub — teams, projects, apps — belongs to an organization.
+</Step>
+
+<Step title="Connect a source host">
+Link GitHub, GitLab, or Bitbucket via OAuth. Go to **Settings → Connect a code host** and follow the prompts. This is required before you can create or import any app.
+</Step>
+
+<Step title="Create your first app">
+Click **New app**, choose a template, give the app a name, and Hub scaffolds and pushes the repository.
+</Step>
+
+</Steps>
+
+## Upgrading
+
+Pull new images and restart to upgrade. The API applies database migrations automatically on boot — there is nothing to run by hand.
+
+- **Install-script installs:** re-run the same `install.sh` command. The script detects the existing `.env`, skips secret generation, pulls the latest images, and restarts.
+- **Dokploy installs:** click **Redeploy** in the Compose service. Dokploy pulls `latest` and restarts.
+
+Start or restart the **api** container before or alongside the **web** container. The web client is generated from the API's OpenAPI schema, so a newer web app talking to an older API may encounter missing fields.
+
+Back up the database before major version jumps.
+
+## Backups
+
+All Hub state lives in a single Postgres volume: accounts, organizations, projects, apps, encrypted OAuth tokens, the app registry, and job history.
+
+```bash
+docker compose exec postgres pg_dump -U action_platform action_platform > backup.sql
+```
+
+Keep `BETTER_AUTH_SECRET` alongside every backup. All stored OAuth tokens are encrypted with that secret — without it, a restored database cannot decrypt them.
+
+<Note>
+  The API image ships Python and git only. Releases work anywhere, but deploying to Lambda or Amplify requires `sam` and the AWS CLI inside the container, which the current image does not include. For Lambda and Amplify targets, run the deploy step in your own CI environment instead.
+</Note>

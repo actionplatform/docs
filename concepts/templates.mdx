@@ -1,0 +1,111 @@
+---
+title: "Project Templates: Every Stack, Production-Ready"
+sidebarTitle: "Templates"
+description: "Hub ships templates for web apps, libraries, automation, docs, and plugins — each production-ready with tests, lint, CI, and a platform.toml out of the box."
+---
+
+Hub ships templates for every common stack. Each one is a plain [cookiecutter](https://cookiecutter.readthedocs.io/) that renders into a fully wired project: `platform.toml`, code quality configuration, an `AGENTS.md`, tests, and a CI pipeline for your chosen provider. Pick a cloud overlay and a service, and the template composes them together before you write a single line of business logic.
+
+## Available templates
+
+### Web applications
+
+| Stack | Template | Description |
+|-------|----------|-------------|
+| Python | `fastapi` | FastAPI + uvicorn + pydantic |
+| Python | `fastmcp` | FastMCP server (Model Context Protocol over HTTP) |
+| Go | `gin` | Gin + net/http |
+| Node.js | `fastify` | Fastify API with TypeScript and Vitest |
+| Node.js | `react` | React + webpack + Jest |
+| Node.js | `react-vite` | React with TypeScript, Vite, and Vitest |
+| Java | `spring` | Spring Boot web API (Maven, JDK 17) |
+| Kotlin | `spring` | Spring Boot web API in Kotlin (Maven, JDK 17) |
+| Ruby | `sinatra` | Sinatra + Puma + RSpec |
+
+### Libraries
+
+| Stack | Template | Description |
+|-------|----------|-------------|
+| Python | `poetry` | Poetry package |
+| Python | `typer` | Python CLI with Typer |
+| Go | `module` | Go module |
+| Go | `cobra` | Go CLI with Cobra |
+| PHP | `composer` | Composer package |
+| Node.js | `npm` | npm package + TypeScript |
+| Java | `maven` | Maven artifact |
+| Rust | `cargo` | Cargo crate |
+
+### Automation
+
+| Stack | Template | Description |
+|-------|----------|-------------|
+| Python | `basic` | Simple Python automation script |
+| Python | `scheduled` | Scheduled Python jobs |
+
+### Other types
+
+| Type | Stack | Description |
+|------|-------|-------------|
+| `docs` | MkDocs | MkDocs Material theme, strict build in CI |
+| `plugin` | Chrome | Manifest V3, popup, background service, tests, store zip |
+| `empty` | — | `platform.toml` + `.code_quality/` only |
+
+## Cloud overlays
+
+Cloud overlays layer deployment infrastructure on top of any compatible template. You choose a base template first, then add an overlay.
+
+| Overlay | Adds |
+|---------|------|
+| `aws/lambda` | SAM template, HTTP API Gateway, custom domain config, deploy workflow, IAM policy |
+| `aws/amplify` | `amplify.yml`, security headers, start-job workflow, IAM policy |
+| `docker` | Language-appropriate `Dockerfile`, `docker-compose.yml` |
+
+## Services
+
+Services add backing infrastructure to your project.
+
+| Service | Provider | What it adds |
+|---------|----------|--------------|
+| `postgres` | `docker` | Local PostgreSQL via Docker Compose |
+| `postgres` | `aws-rds` | Terraform/OpenTofu module + SSM parameter store wiring |
+
+## What every template includes
+
+Every template — regardless of type, stack, or overlay — ships the following:
+
+- **`platform.toml`** — pre-filled with the project name, type, stack, template, language, and CI provider you chose
+- **`.code_quality/`** — linter and formatter configuration for the stack
+- **`AGENTS.md`** — instructions for AI coding agents working in the repository
+- **Tests** — a minimal test suite that passes on a fresh project
+- **CI file** — a workflow for your chosen CI provider (`github`, `gitlab`, `jenkins`, or `bitbucket`) that calls the shared [ci-scripts](https://github.com/actionplatform/ci-scripts)
+
+## Adding your own templates
+
+Any git repository can become a template source.
+
+- **A plain repository** (a starter project, a reference service) becomes a single template. Hub detects the language from `pyproject.toml`, `go.mod`, `package.json`, and similar files, keeps any existing `platform.toml` (renaming the project), or adds `platform.toml`, `.code_quality/`, CI files, and hooks — exactly as `action-platform install` does.
+- **A repository with an `index.json` at the root** becomes a full template catalog with the official layout (`projects/`, `cloud/`, `service/`).
+
+To add a custom template source from the **CLI**:
+
+```bash
+action-platform init --source https://github.com/acme/templates.git@main
+```
+
+The `@ref` suffix is optional and accepts any branch, tag, or commit SHA.
+
+To add one from the **web app**: go to **Templates → Template repositories → Add repository**, supply the name, git URL, and branch or tag. This option is available to owners and admins only. Private repositories are cloned using the organization's connected source host credentials.
+
+Once added, every template, cloud overlay, and service from that repository appears in the web app's Templates catalog and the **Create project** wizard with its source labelled.
+
+<Note>
+Names are unique per organization and `official` is reserved for the built-in catalog. A repository that cannot be cloned appears as *Unavailable* with the error, without hiding the other sources.
+</Note>
+
+## List available templates
+
+```bash
+action-platform init --list
+```
+
+This lists all templates from the official catalog and any custom repositories your organization has added.

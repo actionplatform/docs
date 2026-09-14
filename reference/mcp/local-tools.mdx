@@ -1,0 +1,147 @@
+---
+title: "MCP Local Tools Reference for Hub"
+sidebarTitle: "Local Tools"
+description: "Complete reference for the 17 tools available in local MCP mode — scaffold projects, manage git-flow, release, and deploy from your current directory."
+---
+
+In local mode (`action-platform mcp`), your AI agent gets **17 tools** that act on the current directory and files on your machine. No login is required — the tools use your local environment and credentials directly.
+
+<Tip>
+  Point at a custom templates repository by passing `source=url[@ref]` to
+  `list_matrix`, `init_project`, `cloud_set`, or `service_add`.
+</Tip>
+
+## Tools
+
+<AccordionGroup>
+  <Accordion title="list_matrix — Browse available project templates">
+    List available project templates filtered by type, stack, and framework.
+    Use this before `init_project` to discover what scaffolds are available.
+
+    **Key parameter:** `source` — URL (with optional `@ref`) of a custom templates repository.
+  </Accordion>
+
+  <Accordion title="init_project — Scaffold a new project">
+    Scaffold a new project in the current directory from a template returned by
+    `list_matrix`. Creates the directory structure, platform config, and starter
+    files in one call.
+
+    **Key parameter:** `source` — URL of a custom templates repository.
+  </Accordion>
+
+  <Accordion title="install_platform — Add platform tooling to an existing repo">
+    Add `platform.toml`, quality configuration, CI workflow files, and git hooks
+    to an existing repository without overwriting your existing code.
+  </Accordion>
+
+  <Accordion title="push_project — Push the local project to a remote repository">
+    Push the local project directory to a remote repository. Handles initial
+    remote setup when no upstream is configured yet.
+  </Accordion>
+
+  <Accordion title="cloud_set — Apply a cloud overlay">
+    Apply a cloud overlay to the project. Supported targets: `aws/lambda`,
+    `aws/amplify`, `docker`. Writes the appropriate configuration into
+    `platform.toml` and generates any required infrastructure files.
+
+    **Key parameter:** `source` — URL of a custom templates repository for
+    custom overlays.
+  </Accordion>
+
+  <Accordion title="service_add — Add a backing service">
+    Add a backing service to the project. Currently supports `postgres` with
+    either a `docker` or `aws-rds` provider. Updates `platform.toml` and
+    generates connection configuration.
+
+    **Key parameter:** `source` — URL of a custom templates repository for
+    custom service definitions.
+  </Accordion>
+
+  <Accordion title="project_info — Show project state">
+    Show the current project's `platform.toml` contents alongside the current
+    git state (branch, remote, last commit). Use this to orient the agent
+    before running other tools.
+  </Accordion>
+
+  <Accordion title="start_branch — Create a git-flow branch">
+    Create a git-flow branch from `develop` or `main` following the project's
+    branch naming rules. Equivalent to `git flow feature start` but reads
+    rules from `platform.toml`.
+  </Accordion>
+
+  <Accordion title="gitflow_audit — Audit branch and commits">
+    Check the current branch name and commits against git-flow rules defined for
+    this project. Returns a list of violations with suggested fixes.
+  </Accordion>
+
+  <Accordion title="install_hooks — Install git hooks">
+    Install `commit-msg` and `pre-push` git hooks that enforce the project's
+    git-flow rules locally before any push reaches the remote.
+  </Accordion>
+
+  <Accordion title="propose_pull_request — Prepare a pull request">
+    Prepare a pull request by determining the correct target branch and
+    generating a body from the project's rules and the commits on the current
+    branch. Does not open the PR — call `open_pull_request` to publish it.
+  </Accordion>
+
+  <Accordion title="open_pull_request — Open the pull request on the host">
+    Open the pull request prepared by `propose_pull_request` on the configured
+    source host (GitHub, GitLab, etc.). Requires host credentials in your
+    environment.
+  </Accordion>
+
+  <Accordion title="release — Cut a versioned release">
+    Cut a versioned release from the current branch. Stable versions are
+    produced from `main`/`master`; any other branch yields a `X.Y.Z-rc.N`
+    pre-release tag.
+
+    **Default:** `dry_run=true` — the agent shows the result and asks for
+    confirmation before calling with `dry_run=false`.
+
+    **Key parameter:** `branch` — override the branch to release from.
+  </Accordion>
+
+  <Accordion title="deploy — Deploy to the configured cloud target">
+    Deploy the project to the cloud target configured in `platform.toml`.
+
+    **Default:** `dry_run=true` — the agent shows the plan and asks for
+    confirmation before calling with `dry_run=false`.
+  </Accordion>
+
+  <Accordion title="rollback — Roll back to a previous version">
+    Roll back the deployment to a previously released version. Specify the
+    target version to restore.
+  </Accordion>
+
+  <Accordion title="diagnose — Run the deploy target's health check">
+    Run the health check defined for the configured deploy target and return a
+    structured report of any failing checks. Use this before `deploy` to catch
+    configuration issues early.
+  </Accordion>
+
+  <Accordion title="gitflow_rules — Return git-flow rules for this project">
+    Return the git-flow branch naming and commit message rules that apply to
+    this project, as read from `platform.toml`. Other tools use these rules
+    internally; call this to inspect or explain them to a user.
+  </Accordion>
+</AccordionGroup>
+
+## Safe-by-default tools
+
+`release` and `deploy` always default to `dry_run=true`. Your agent will show
+you the outcome of the dry run and ask for explicit confirmation before calling
+either tool with `dry_run=false`. You can inspect the plan without any risk of
+accidentally shipping.
+
+## Custom template repositories
+
+Pass `source=<url>` (optionally `source=<url>@<ref>`) to any of the following
+tools to use a custom templates repository instead of the official one:
+
+| Tool | What `source` controls |
+|---|---|
+| `list_matrix` | Which templates are listed |
+| `init_project` | Which template is scaffolded |
+| `cloud_set` | Which cloud overlay is applied |
+| `service_add` | Which service definition is used |

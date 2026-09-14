@@ -1,72 +1,94 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mintlify Starter Kit",
-  "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
-  },
-  "favicon": "/favicon.svg",
-  "navigation": {
-    "pages": [
-      {
-        "group": "Getting Started",
-        "pages": [
-          "index",
-          "quickstart"
-        ]
-      }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
+  "name": "Hub",
+  "theme": "aspen",
   "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
+    "light": "https://media.brand.dev/5ceaadd8-5727-4433-b0d7-edcdc0ab4422.svg",
+    "dark": "https://media.brand.dev/5ceaadd8-5727-4433-b0d7-edcdc0ab4422.svg"
+  },
+  "favicon": "https://media.brand.dev/00a491ef-9c93-4b64-a270-e21497c4ed27.png",
+  "colors": {
+    "primary": "#040404",
+    "light": "#244455"
   },
   "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
     "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://app.mintlify.com"
+      "type": "github",
+      "href": "https://github.com/actionplatform/action-platform"
     }
   },
-  "contextual": {
-    "options": [
-      "copy",
-      "view",
-      "chatgpt",
-      "claude",
-      "perplexity",
-      "mcp",
-      "cursor",
-      "vscode"
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "self-hosting"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/git-flow",
+              "concepts/templates",
+              "concepts/manifest",
+              "concepts/releases",
+              "concepts/access-control"
+            ]
+          },
+          {
+            "group": "Using Hub",
+            "pages": [
+              "guides/web-app",
+              "guides/cli",
+              "guides/mcp",
+              "guides/ai-agents"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Reference",
+        "groups": [
+          {
+            "group": "CLI Reference",
+            "pages": [
+              "reference/cli/scaffold",
+              "reference/cli/git-flow",
+              "reference/cli/release",
+              "reference/cli/environment"
+            ]
+          },
+          {
+            "group": "MCP Reference",
+            "pages": [
+              "reference/mcp/local-tools",
+              "reference/mcp/remote-tools",
+              "reference/mcp/prompts"
+            ]
+          },
+          {
+            "group": "API Reference",
+            "pages": [
+              "reference/api/overview",
+              "reference/api/auth",
+              "reference/api/apps",
+              "reference/api/v1"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "reference/platform-toml",
+              "reference/environment-variables"
+            ]
+          }
+        ]
+      }
     ]
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
   }
 }

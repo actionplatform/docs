@@ -1,0 +1,137 @@
+---
+title: "CLI Environment Variables and Token Management"
+sidebarTitle: "Environment"
+description: "Configure source-host credentials and server overrides with environment variables, and manage login tokens using the Hub CLI auth commands."
+---
+
+Hub reads a set of environment variables for source-host credentials and server overrides. You can
+supply these in your shell profile, a `.env` file, or your CI/CD secrets store. When both an
+environment variable and a value in the credentials file are present, the environment variable wins.
+
+---
+
+## Environment variables
+
+| Variable | Purpose |
+|---|---|
+| `ACTION_PLATFORM_GITHUB_TOKEN` / `GH_TOKEN` | Authenticate with GitHub when the `gh` CLI is not installed or not authenticated. Either variable is accepted; `ACTION_PLATFORM_GITHUB_TOKEN` takes precedence. |
+| `ACTION_PLATFORM_GITLAB_TOKEN` / `GITLAB_TOKEN` | Authenticate with GitLab. Either variable is accepted; `ACTION_PLATFORM_GITLAB_TOKEN` takes precedence. |
+| `ACTION_PLATFORM_BITBUCKET_TOKEN` | Bitbucket API token. Must be combined with `ACTION_PLATFORM_BITBUCKET_USERNAME`. |
+| `ACTION_PLATFORM_BITBUCKET_USERNAME` | Bitbucket account username. Required alongside `ACTION_PLATFORM_BITBUCKET_TOKEN`. |
+| `ACTION_PLATFORM_TEMPLATES` | Path to a local checkout of the templates repository. Takes precedence over `ACTION_PLATFORM_TEMPLATES_REPO` when both are set. |
+| `ACTION_PLATFORM_TEMPLATES_REPO` | URL of the templates repository to clone on demand. Overrides the built-in default. |
+| `AP_HOME` | Directory where the CLI stores credentials and the API stores workspaces. Defaults to `~/.action-platform`. |
+| `AP_SERVER` | URL of the Hub platform to connect to. Overrides the server recorded in the credentials file. |
+| `AP_TOKEN` | Bearer token to use for authentication. Overrides the token recorded in the credentials file. Use together with `AP_SERVER`. |
+| `AP_SENTRY_DSN` | Sentry DSN for CLI crash reporting. Has no effect unless the `sentry` extra is installed. Optional — see [Optional extras](#optional-extras) below. |
+
+---
+
+## Token management
+
+Hub uses a device-flow OAuth exchange to issue bearer JWTs. Tokens are stored in
+`~/.action-platform/credentials.json` with mode `600`. Set `AP_SERVER` and `AP_TOKEN` to bypass the
+credentials file entirely — useful in CI pipelines where you inject secrets as environment variables.
+
+### `action-platform login`
+
+```bash
+action-platform login <server> [--scope read,write,release,admin] [--name label] [--no-browser]
+```
+
+Authenticate against a Hub platform and store a bearer token in the credentials file.
+
+Without `--scope`, the device flow asks for every scope and every organisation your role can grant.
+The browser page shows that selection pre-filled; you can narrow it before approving. Use
+`--scope` to narrow from the command line instead.
+
+The available scopes are:
+
+| Scope | What it allows |
+|---|---|
+| `read` | Read projects, apps, releases, and logs. Always included. |
+| `write` | Configuration changes, branch creation, pull requests, commits, and sync. |
+| `release` | Publish releases and trigger CI runners. |
+| `admin` | Manage projects, members, source hosts, and organisation settings. |
+
+During the browser step you also choose the token's **reach** — one organisation or all of them,
+optionally scoped to a single project or a single app within it. Scope narrows your role; it never
+widens it.
+
+Tokens are valid for 90 days. You can list and revoke them under **Connected apps** (the key icon
+next to your name in the web app).
+
+<ParamField path="server" type="string" required>
+  URL of the Hub platform to authenticate against. Example: `https://app.actionplatform.io`.
+</ParamField>
+
+<ParamField path="--scope" type="string">
+  Comma-separated list of scopes to request. Example: `read,write`. Defaults to all scopes your
+  role can grant.
+</ParamField>
+
+<ParamField path="--name" type="string">
+  Human-readable label for the token, shown in the **Connected apps** list. Defaults to the
+  hostname of your machine.
+</ParamField>
+
+<ParamField path="--no-browser" type="boolean">
+  Print the device-flow URL instead of opening it automatically. Use this on headless machines or
+  in environments where a browser cannot be launched.
+</ParamField>
+
+### `action-platform whoami`
+
+```bash
+action-platform whoami
+```
+
+Print the currently active identity. Output includes:
+
+- **Server** — the Hub platform URL
+- **Account** — your username or email
+- **Scope** — the permission scopes the active token carries
+- **Reach** — the organisation, project, or app the token is restricted to (if any)
+
+If `AP_SERVER` and `AP_TOKEN` are set they take precedence over the credentials file, so `whoami`
+reflects the overridden identity.
+
+### `action-platform logout`
+
+```bash
+action-platform logout
+```
+
+Remove the stored credentials for the current server from `~/.action-platform/credentials.json`.
+The token is not automatically revoked on the server; revoke it manually under **Connected apps**
+if you want to invalidate it remotely.
+
+### Credentials file
+
+Credentials are stored in:
+
+```
+~/.action-platform/credentials.json
+```
+
+The file is created with mode `600` (owner read/write only). Each entry records a server URL, the
+bearer JWT, its scope, and its reach. Multiple server entries can coexist in the same file.
+
+<Note>
+  `AP_SERVER` + `AP_TOKEN` always override the credentials file. In CI/CD pipelines, inject these
+  two variables as secrets rather than writing a credentials file to disk.
+</Note>
+
+---
+
+## Optional extras
+
+Hub's crash reporting is opt-in and requires a separate install step:
+
+```bash
+pip install "action-platform[sentry]"
+```
+
+Once the `sentry` extra is installed, set `AP_SENTRY_DSN` to your project's DSN and the CLI will
+automatically capture unhandled exceptions and send them to Sentry. No data is transmitted if
+`AP_SENTRY_DSN` is unset or if the extra is not installed.

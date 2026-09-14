@@ -1,0 +1,132 @@
+---
+title: "Git-Flow Enforcement in Hub"
+sidebarTitle: "Git-Flow"
+description: "Hub enforces git-flow at three layers — git hooks, CI, and the platform — so every branch, commit, and pull request follows the same rules."
+---
+
+Hub enforces git-flow at three layers — hooks, CI, and the platform itself. Git hooks refuse the wrong move before it leaves your machine, CI refuses it on the pull request, and the CLI and MCP tools guide you toward the right one.
+
+## Branch types
+
+Every branch belongs to exactly one kind. The kind determines where it starts, where it merges, and what release it produces.
+
+| Branch | Starts from | Merges into | Release produced |
+|--------|-------------|-------------|------------------|
+| `feature/<code>` | `develop` | `develop` | `X.Y.Z-rc.N` pre-release |
+| `bugfix/<code>` | `develop` | `develop` | `X.Y.Z-rc.N` pre-release |
+| `chore/<code>` | `develop` | `develop` | `X.Y.Z-rc.N` pre-release |
+| `docs/<code>` | `develop` | `develop` | `X.Y.Z-rc.N` pre-release |
+| `refactor/<code>` | `develop` | `develop` | `X.Y.Z-rc.N` pre-release |
+| `test/<code>` | `develop` | `develop` | `X.Y.Z-rc.N` pre-release |
+| `ci/<code>` | `develop` | `develop` | `X.Y.Z-rc.N` pre-release |
+| `perf/<code>` | `develop` | `develop` | `X.Y.Z-rc.N` pre-release |
+| `release/<version>` | `develop` | `main` and `develop` | `X.Y.Z-rc.N` until merged, then `X.Y.Z` |
+| `hotfix/<code>` | `main` | `main` and `develop` | `X.Y.Z-rc.N` until merged, then `X.Y.Z` |
+| `main` / `master` | — | — | Stable `X.Y.Z` → PyPI / npm / … |
+
+<Note>
+When a repository has no `develop` branch, work branches start from the default branch instead.
+</Note>
+
+## Branch naming
+
+Branch names follow the format `<kind>/<code>[-slug]`, where `<code>` is the issue or ticket identifier and the optional `slug` is a short human-readable description.
+
+| Part | Description | Example |
+|------|-------------|---------|
+| `<kind>` | One of the branch types above | `feature`, `hotfix`, `release` |
+| `<code>` | Issue, ticket, or version number | `42`, `PROJ-7`, `0.3.2` |
+| `[-slug]` | Optional short description (hyphenated) | `-login`, `-auth-fix` |
+
+**Examples:**
+
+```
+feature/42-login
+hotfix/PROJ-7
+release/0.3.2
+chore/91-update-deps
+docs/15-api-reference
+```
+
+## Conventional Commits
+
+All commits must follow the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) specification.
+
+**Format:**
+
+```
+<type>(<scope>): <description>
+
+[optional body]
+
+[optional footer]
+```
+
+**Common types and examples:**
+
+| Type | Example commit message |
+|------|------------------------|
+| `feat` | `feat(login): add OAuth2 form` |
+| `fix` | `fix(auth): correct token expiry check` |
+| `chore` | `chore(deps): bump pydantic to 2.7` |
+| `chore(release)` | `chore(release): 0.3.2` |
+| `docs` | `docs(api): update endpoint reference` |
+| `test` | `test(login): cover form validation` |
+| `ci` | `ci: add trivy scan workflow` |
+| `perf` | `perf(query): index orders by status` |
+| `refactor` | `refactor(auth): extract token helper` |
+
+The `commit-msg` hook **refuses** any subject line that does not match the Conventional Commits format, as well as any direct commit on a protected branch (other than the exceptions listed below).
+
+## Protected branches
+
+`main`, `master`, and `develop` accept no direct commits, with three narrow exceptions:
+
+| Allowed commit | Example |
+|----------------|---------|
+| `chore(release): …` | `chore(release): 0.3.2` |
+| `chore(platform): …` | `chore(platform): install hooks` |
+| The bootstrap commit | `chore: bootstrap orders` |
+
+Merges and reverts of existing pull requests are also allowed. All other commits — including your own work — must arrive through a pull request from a properly named work branch.
+
+## Where the rules live
+
+The same rules are implemented once and enforced by three independent gatekeepers:
+
+| Enforcer | What it checks |
+|----------|----------------|
+| **Git hooks** — `commit-msg` and `pre-push` in `action_platform/hooks/` (installed by `action-platform install`) | `commit-msg` rejects a non-conventional subject or a direct commit on a protected branch; `pre-push` rejects pushing a protected branch with non-release commits |
+| **CI** — `gitflow.sh` in [ci-scripts](https://github.com/actionplatform/ci-scripts), run by GitHub Actions, GitLab CI, or Jenkins on every pull request | The same branch-name and commit-message checks applied on the remote |
+| **The platform** — `action_platform/core/flow/gitflow.py`, used by the CLI, MCP tools, and the web app's Branch policy card | Audits the current branch and its commits on demand |
+
+<Note>
+Hub preserves any hooks you already have. An existing `pre-commit`, `commit-msg`, or `pre-push` that is not Hub's is renamed to `<name>.pre-action-platform` and still runs after Hub's check. When `core.hooksPath` points at a versioned directory (Husky's `.husky/`, lefthook), nothing is touched — git-flow enforcement falls back to CI only, and the CLI tells you so.
+</Note>
+
+## The audit
+
+Run `action-platform gitflow` at any time to audit the current state of your branch and its commits. The web app's **Branch policy** card runs the same check automatically.
+
+**What it checks:**
+
+- **On a work branch** — all commits since the branch diverged from `develop` or `main`
+- **On `main`, `master`, or `develop`** — commits after the last tag; once `platform.toml` is in the history, only commits on the path down from the commit that added it
+
+The audit does not ask you to rewrite years of commits predating Hub, and merged pull requests are never treated as direct commits. The hooks are what prevent a bad commit from landing in the first place; the audit surfaces anything that slipped through.
+
+## CLI commands
+
+```bash
+# Create a work branch: pull develop, create feature/42-login, push
+action-platform branch feature 42 login
+
+# Audit the current branch and its commits
+action-platform gitflow
+
+# Open a pull request — target and body derived from the rules and your commits
+action-platform pr
+
+# Create a release (rc off any branch, stable on main/master)
+action-platform release patch
+```

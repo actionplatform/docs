@@ -1,47 +1,172 @@
 ---
-title: "Quickstart"
-description: "Begin with a guide on the fastest path to a successful outcome"
+title: "Scaffold, Branch, and Release Your First App on Hub"
+sidebarTitle: "Quickstart"
+description: "Install the CLI, scaffold a production-ready app, open a feature branch, raise a pull request, and cut your first release in one sitting."
 ---
 
-Describe how someone begins using your product. What is the first thing they need to do? Are there any prerequisites?
-
-A quickstart should take someone from zero to using your product. They'll get a quick win and a sense of what they can accomplish.
-
-## Prerequisites
-
-Before you begin, you must have:
-
-- Requirement one (for example, Node.js 18+, a free account, an API key)
-- Requirement two (for example, a compatible device, a compatible browser, a compatible operating system)
-
-## Get started
+Hub compresses the full lifecycle of a new service — scaffold, branch, commit, PR, release — into a handful of commands. Follow this guide to go from nothing to a versioned, CI-wired app with a GitHub repo in under five minutes.
 
 <Steps>
-  <Step title="Install">
-    Describe how to install your product or sign up.
 
-    ```bash
-    npm install your-package
-    ```
-  </Step>
-  <Step title="Configure">
-    Describe any setup or configuration needed before first use.
+<Step title="Install the CLI">
 
-    ```bash
-    your-cli init
-    ```
-  </Step>
-  <Step title="Run it">
-    Show the first thing a user does to see it working.
+Install Hub's CLI with `pipx` so it gets its own isolated environment:
 
-    ```bash
-    your-cli start
-    ```
-  </Step>
-</Steps>
+```bash
+pipx install action-platform
+```
+
+To also enable the MCP server for Claude Code, Codex, or Cursor, install the MCP extra instead:
+
+```bash
+pip install "action-platform[mcp]"
+```
+
+Verify the install:
+
+```bash
+action-platform --version
+```
+
+You'll need `git` on your `PATH`. To push to GitHub, either have the `gh` CLI authenticated or export `ACTION_PLATFORM_GITHUB_TOKEN`.
+
+</Step>
+
+<Step title="Scaffold your first app">
+
+Run `init` interactively and Hub will prompt you for type, stack, template, name, and CI provider:
+
+```bash
+action-platform init
+```
+
+Or skip the prompts by passing every option directly:
+
+```bash
+action-platform init web python fastapi --name orders --cloud aws/lambda
+```
+
+Thirty seconds later you have:
+
+- A **FastAPI service** with tests and lint configured
+- **CI** wired for the provider you chose (GitHub Actions, GitLab CI, Jenkins, or Bitbucket Pipelines)
+- A **SAM template** and a least-privilege **IAM policy** in `requirements/`
+- A `platform.toml` manifest and an `AGENTS.md`
+- A **GitHub repository** already pushed (pass `--no-push` to keep it local)
+
+```bash
+cd orders
+```
+
+</Step>
+
+<Step title="Start a feature branch">
+
+Never commit directly to `main` or `develop`. Create a typed, tracked branch instead:
+
+```bash
+action-platform branch feature 1 hello
+```
+
+Hub creates `feature/1-hello` from `develop`, switches to it, and installs git hooks that enforce Conventional Commits and protect the main branches.
+
+</Step>
+
+<Step title="Commit with Conventional Commits">
+
+Make your change, then commit:
+
+```bash
+git add .
+git commit -m "feat: say hello"
+```
+
+The git hooks installed in the previous step will **reject any message** that doesn't follow the [Conventional Commits](https://www.conventionalcommits.org/) format. Valid types include `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, and `ci`.
+
+</Step>
+
+<Step title="Open a pull request">
+
+When your branch is ready for review, Hub composes the PR body from your commits and applies the target branch rules from `platform.toml`:
+
+```bash
+action-platform pr
+```
+
+The command pushes your branch (if not already pushed) and opens the pull request on your configured source host.
+
+</Step>
+
+<Step title="Cut a release">
+
+Preview the next version and generated changelog before committing to a release:
+
+```bash
+action-platform release minor --dry-run
+```
+
+When you're happy, drop `--dry-run` on `main` or `master` to publish a stable release:
+
+```bash
+action-platform release minor
+```
+
+Hub bumps the version, writes `CHANGELOG.md`, tags the commit, and triggers your CI release pipeline.
 
 <Tip>
-  Give people a way to get help. This could be a link to a support page, a chat with a customer support agent, or a forum for your product.
-
-  Example: Need help? Reach out to us at [support@yourcompany.com](mailto:support@yourcompany.com).
+  Always run `--dry-run` first. It shows the computed next version and the full changelog entry without writing anything — a safe way to confirm the scope before publishing.
 </Tip>
+
+</Step>
+
+</Steps>
+
+## Bring in an existing repository
+
+You don't need to start from scratch. Use `install` instead of `init` to add Hub to a repository you already own:
+
+```bash
+cd my-existing-repo
+action-platform install
+```
+
+Hub adds the following files without overwriting anything you already have:
+
+- `platform.toml` — the manifest (version picked up from the newest `vX.Y.Z` tag, or `0.0.0`)
+- `LAST_VERSION` — tracks the last released version
+- `AGENTS.md` — context file for humans and AI agents
+- Code quality config (linting, formatting)
+- CI workflow files for your provider
+- Git hooks (Conventional Commits, branch protection)
+
+## First project on the hosted platform
+
+If your team runs a hosted Hub instance, you can do everything from the browser:
+
+<Steps>
+
+<Step title="Sign in and connect a source host">
+Open the platform URL, create an account, create an organization, then go to **Settings → Connect a code host** and link GitHub, GitLab, or Bitbucket.
+</Step>
+
+<Step title="Create or import an app">
+Click **New app** and pick a template — or choose **Add an existing repository** and paste the URL. The platform clones the repo and installs `platform.toml`, CI files, and hooks when they are missing. Click **Commit changes** to open a pull request with the additions.
+</Step>
+
+<Step title="Release from the app page">
+Navigate to your app and click **Release**. The branch determines the release type: `main` or `master` produces a stable release; any other branch produces a release candidate (`-rc.N`).
+</Step>
+
+</Steps>
+
+## Connect the CLI to a hosted instance
+
+Log the CLI in to your hosted platform to run all the same commands against your team's shared instance:
+
+```bash
+action-platform login https://<your-platform> --scope read,write
+# approve the device code in your browser, then:
+action-platform whoami
+```
+
+After login, `action-platform pr`, `action-platform release`, and all other commands act on the hosted platform. The MCP server picks up the same credentials automatically when you run `action-platform mcp --remote`.

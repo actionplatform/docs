@@ -1,0 +1,184 @@
+---
+title: "Hub CLI: Scaffold, Release, and Deploy from the Terminal"
+sidebarTitle: "CLI"
+description: "Install the Hub CLI to scaffold projects, manage git-flow, cut releases, and operate deployments — all from your terminal with a single tool."
+---
+
+The Hub CLI (`action-platform`) gives you every platform operation from the terminal. Use it to scaffold new projects from templates, enforce git-flow on your branches, cut and publish releases, manage deployments, and connect to a hosted Hub instance — including from AI agents via MCP.
+
+## Install
+
+<CodeGroup>
+```bash pipx (recommended)
+pipx install action-platform
+```
+
+```bash pip
+pip install action-platform
+```
+
+```bash pip with MCP server
+pip install "action-platform[mcp]"
+```
+</CodeGroup>
+
+<Tip>
+  `pipx` installs the CLI in an isolated environment and puts it on your PATH without affecting other Python projects. It's the recommended approach for most developers.
+</Tip>
+
+The CLI requires `git` on your PATH. To push to a source host, you also need either the `gh` CLI (for GitHub) or a token set via `ACTION_PLATFORM_GITHUB_TOKEN`, `ACTION_PLATFORM_GITLAB_TOKEN`, or `ACTION_PLATFORM_BITBUCKET_TOKEN` (+ `ACTION_PLATFORM_BITBUCKET_USERNAME`).
+
+## Scaffold commands
+
+Use these commands to create new projects or bring existing repositories onto the platform.
+
+### `init` — create a new project
+
+```bash
+# Interactive: walks you through type → stack → template → name → CI
+action-platform init
+
+# Direct: specify everything inline
+action-platform init web go gin --ci gitlab
+
+# With a Docker/cloud deploy overlay
+action-platform init web python --cloud docker
+
+# Keep the project local — don't push to a remote
+action-platform init web typescript react --no-push
+
+# List all available template combinations
+action-platform init --list
+
+# Pull templates from a custom repository (branch or tag optional)
+action-platform init --source https://github.com/my-org/templates@main web python
+```
+
+`init` renders a Cookiecutter template from the matrix, applies the cloud overlay if requested, creates the remote repository through your configured source host, and pushes the first commit.
+
+### `install` — add platform files to an existing repo
+
+```bash
+action-platform install
+action-platform install --type web --language python --ci github
+action-platform install --dry-run   # preview what would change without writing anything
+```
+
+`install` adds `platform.toml`, `LAST_VERSION` (set to the newest `vX.Y.Z` tag, or `0.0.0`), `AGENTS.md`, `.code_quality/`, CI files, and git hooks to a repository that doesn't have them yet. It **never overwrites** existing files.
+
+### `cloud set` and `service add` — configure deploy targets
+
+```bash
+# Switch the deploy target
+action-platform cloud set aws/lambda
+
+# Add a backing service
+action-platform service add postgres --provider aws-rds
+```
+
+Both commands accept `--source URL[@ref]` to pull overlays and service definitions from a custom templates repository.
+
+## Git-flow commands
+
+Hub enforces a git-flow discipline — feature branches, hotfix branches, Conventional Commit messages, and structured pull requests. These commands keep your workflow on track.
+
+```bash
+# Start a feature branch from develop (or main): feature/42-login
+action-platform branch feature 42 login
+
+# Start a hotfix branch from main/master
+action-platform branch hotfix PROJ-7
+
+# Audit the current branch and its commits against your git-flow rules
+action-platform gitflow
+
+# Install the git hooks that enforce Conventional Commits locally
+action-platform gitflow --install-hooks
+
+# Open a pull request — target branch from the rules, body from the commits
+action-platform pr
+
+# Open as a draft
+action-platform pr --draft
+
+# Preview the pull request without creating it
+action-platform pr --dry-run
+```
+
+## Release and operate
+
+```bash
+# Bump the patch version, preview first (no changes made)
+action-platform release patch --dry-run
+
+# Release a minor version
+action-platform release minor
+
+# Release a specific version
+action-platform release 2.4.0
+
+# Force a release candidate
+action-platform release minor --rc
+
+# Release a single component in a multi-component project
+action-platform release patch --component web
+
+# Deploy to a named target
+action-platform deploy --target aws-lambda --stage prod
+
+# Preview the deploy plan without executing
+action-platform deploy --dry-run
+
+# Roll back to a previous version
+action-platform rollback --target aws-lambda --to 2.3.1
+
+# Inspect the health of a deploy target
+action-platform diagnose --target aws-lambda
+
+# Tear down a deploy target
+action-platform destroy --target aws-lambda
+```
+
+`release` validates your working tree before doing anything: it refuses to proceed if the tree is dirty or if the version/tag already exists. It then bumps `LAST_VERSION`, prepends `CHANGELOG.md`, syncs version fields in `pyproject.toml` / `package.json` / `Cargo.toml` / `composer.json` / `pom.xml`, commits `chore(release): X.Y.Z`, tags, pushes, and publishes the release on your source host. If the remote rejects the push, the commit and tag are rolled back automatically. Off `main`/`master`, the version becomes `X.Y.Z-rc.N`.
+
+## Platform services commands
+
+These commands interact with the Hub platform itself — the API, MCP server, and authentication.
+
+| Command | What it does |
+|---|---|
+| `action-platform api` | Start the JSON API server (port 7788, OpenAPI at `/docs`) that the web app uses |
+| `action-platform mcp` | Start the MCP server in stdio mode for AI agent integration |
+| `action-platform mcp --http` | Start the MCP server over HTTP at `http://127.0.0.1:8765/mcp` |
+| `action-platform mcp --remote` | Connect to the MCP tools exposed by a hosted Hub instance |
+| `action-platform login <url>` | Authenticate to a hosted instance via device flow |
+| `action-platform whoami` | Print your server, account, scope, and token reach |
+| `action-platform logout` | Remove stored credentials |
+
+## Logging in to a hosted instance
+
+To use the CLI or MCP against a hosted Hub instance, run the device flow:
+
+```bash
+# Authenticate — opens a browser page to approve the code
+action-platform login https://platform.example.com --scope read,write
+
+# Confirm your identity and token scope
+action-platform whoami
+
+# Start the MCP server pointing at the hosted platform
+action-platform mcp --remote
+```
+
+**How device flow works:**
+
+1. The CLI displays a short code and opens `https://platform.example.com/device` in your browser.
+2. You approve the code, choose the scopes (`read`, `write`, `release`, `admin`), and set the reach (one organization or all of them, optionally scoped to one project or app).
+3. Hub issues a bearer JWT valid for **90 days**, stored at `~/.action-platform/credentials.json` (mode 600).
+4. Every subsequent CLI and MCP call sends `Authorization: Bearer <token>` automatically.
+
+`action-platform whoami` prints the server, your account, the token's scope, and exactly where it can act. Manage and revoke tokens from **Connected apps** in the web app (key icon next to your name).
+
+<Tip>
+  Set `AP_SERVER` and `AP_TOKEN` as environment variables to override the credentials file — useful in CI pipelines or containers where you can't write to the home directory.
+</Tip>

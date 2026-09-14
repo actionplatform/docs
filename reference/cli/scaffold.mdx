@@ -1,0 +1,199 @@
+---
+title: "CLI Scaffold Commands: init, install, cloud, service"
+sidebarTitle: "Scaffold"
+description: "Set up new projects from a template or onboard existing repositories using the init, install, cloud set, and service add scaffold commands."
+---
+
+The scaffold commands give you a repeatable, opinionated starting point for every project. Use `init` to
+generate a new repository from a template, `install` to retrofit an existing one, `cloud set` to switch
+deploy targets, and `service add` to attach backing services.
+
+---
+
+## `action-platform init`
+
+```bash
+action-platform init [<type> <stack> <template>] [flags]
+```
+
+`init` renders a [cookiecutter](https://cookiecutter.readthedocs.io) from the templates matrix, optionally
+applies a cloud overlay, then — by default — creates the remote repository through your configured source
+host and pushes the first commit.
+
+### Flags
+
+<ParamField path="--ci" type="string">
+  CI provider to configure. Accepts `github`, `gitlab`, `jenkins`, or `bitbucket`. Defaults to the
+  provider detected from your source-host credentials.
+</ParamField>
+
+<ParamField path="--cloud" type="string">
+  Apply a deploy overlay at init time. Example: `docker`, `aws/lambda`. Equivalent to running
+  `action-platform cloud set <target>` immediately after scaffolding.
+</ParamField>
+
+<ParamField path="--no-push" type="boolean">
+  Render the template locally and stop — skip remote-repo creation and the initial push.
+</ParamField>
+
+<ParamField path="--list" type="boolean">
+  Print the full templates matrix (type → stack → template) and exit. No project is created.
+</ParamField>
+
+<ParamField path="--source" type="string">
+  Load templates from an alternative repository instead of the default one. Accepts a URL with an
+  optional ref: `URL[@ref]`. The same override applies to `cloud set` and `service add`.
+</ParamField>
+
+### Usage examples
+
+<AccordionGroup>
+  <Accordion title="Interactive mode">
+    Run `init` with no positional arguments to step through a guided prompt sequence:
+
+    ```bash
+    action-platform init
+    ```
+
+    The CLI walks you through four choices in order: **type** (e.g. `web`, `worker`, `lib`),
+    **stack** (e.g. `go`, `python`, `node`), **template** (e.g. `gin`, `fastapi`, `express`),
+    **project name**, and **CI provider**. Every answer narrows the next prompt to only valid options.
+  </Accordion>
+
+  <Accordion title="Direct mode">
+    Pass all three positional arguments to skip the prompts entirely. Useful in scripts and CI
+    pipelines where you already know exactly what you want:
+
+    ```bash
+    action-platform init web go gin --ci gitlab
+    ```
+
+    This scaffolds a Go/Gin web project wired to GitLab CI and pushes it to a new GitLab repository.
+  </Accordion>
+
+  <Accordion title="With a cloud overlay">
+    Apply a deploy overlay in the same command using `--cloud`. The overlay patches the generated
+    project with infrastructure config for the chosen target:
+
+    ```bash
+    action-platform init web python --cloud docker
+    ```
+
+    The resulting repository includes a `Dockerfile`, Compose file, and the corresponding
+    `platform.toml` `[deploy]` block pre-filled.
+  </Accordion>
+
+  <Accordion title="Keep the project local (--no-push)">
+    Skip remote-repo creation and the initial push. The project is written to the current directory
+    and the git history stays on your machine:
+
+    ```bash
+    action-platform init web go gin --no-push
+    ```
+
+    You can push manually later or connect the repo to a source host through `platform.toml`.
+  </Accordion>
+
+  <Accordion title="List available templates">
+    Print every entry in the templates matrix and exit without creating anything:
+
+    ```bash
+    action-platform init --list
+    ```
+
+    The output groups entries by type → stack → template so you can find the exact three-part
+    identifier before running the full command.
+  </Accordion>
+
+  <Accordion title="Use a custom template source">
+    Point `init` at a fork or a private templates repository. Append `@ref` to pin a branch, tag,
+    or commit:
+
+    ```bash
+    action-platform init web python fastapi \
+      --source https://github.com/acme/ap-templates@v2
+    ```
+
+    The same `--source` flag is honoured by `cloud set` and `service add`, so your entire scaffold
+    workflow can target the same custom repository.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## `action-platform install`
+
+```bash
+action-platform install [flags]
+```
+
+Retrofit an existing repository with the Hub scaffolding files. `install` adds the following to your
+working tree — **it never overwrites a file that already exists**:
+
+- `platform.toml` — the project manifest
+- `LAST_VERSION` — seeded from the newest `vX.Y.Z` tag in the repository, or `0.0.0`
+- `AGENTS.md` — guidance for AI coding agents
+- `.code_quality/` — shared linter and formatter config
+- CI pipeline files for the chosen provider
+- `commit-msg` and `pre-push` git hooks
+
+### Flags
+
+<ParamField path="--type" type="string">
+  Project type used to select the right CI template and quality config. Example: `web`, `worker`, `lib`.
+</ParamField>
+
+<ParamField path="--language" type="string">
+  Primary language for linter selection. Accepts `python`, `go`, `node`, `none`, and others.
+  Defaults to auto-detection from the repository contents.
+</ParamField>
+
+<ParamField path="--ci" type="string">
+  CI provider. Accepts `github`, `gitlab`, `jenkins`, `bitbucket`. Defaults to the provider
+  detected from remote URL or existing config files.
+</ParamField>
+
+<ParamField path="--dry-run" type="boolean">
+  Print every file that *would* be written or skipped, then exit without touching the repository.
+</ParamField>
+
+---
+
+## `action-platform cloud set`
+
+```bash
+action-platform cloud set <target>
+```
+
+Add or replace the deploy overlay for the current project. `<target>` is a slash-separated path that
+matches an entry in the templates repository, for example:
+
+```bash
+action-platform cloud set aws/lambda
+action-platform cloud set gcp/cloud-run
+action-platform cloud set docker
+```
+
+The command patches `platform.toml` with the matching `[deploy]` block and writes any supporting
+infrastructure files (Dockerfiles, Terraform modules, GitHub Actions workflow files, etc.) that do
+not already exist. Pass `--source URL[@ref]` to load the overlay from a custom templates repository.
+
+---
+
+## `action-platform service add`
+
+```bash
+action-platform service add <service> --provider <provider>
+```
+
+Attach a backing service to the current project. The command writes a `[service.<name>]` block into
+`platform.toml` and, where a provider module exists, generates the corresponding infrastructure
+snippets.
+
+```bash
+action-platform service add postgres --provider aws-rds
+action-platform service add redis    --provider upstash
+action-platform service add storage  --provider gcs
+```
+
+Pass `--source URL[@ref]` to load provider modules from a custom templates repository.

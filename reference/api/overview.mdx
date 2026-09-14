@@ -1,0 +1,136 @@
+---
+title: "Hub API: JSON REST API for the Web App and CLI Tools"
+sidebarTitle: "Overview"
+description: "Hub exposes a JSON REST API at /api/* and /api/v1/*. The web app and CLI both use it — call it directly from any HTTP client or script."
+---
+
+Hub exposes a single JSON REST API at `/api/*` and `/api/v1/*`. Every operation the web app and CLI perform goes through this API — you can call it directly from any HTTP client, script, or integration using the same endpoints.
+
+## Base URL
+
+All requests go to your Hub instance:
+
+```
+https://<your-hub-instance>
+```
+
+Interactive OpenAPI documentation is available at `/docs`, and the raw OpenAPI schema is at `/openapi.json`.
+
+## Authentication
+
+Hub supports two authentication paths depending on your client.
+
+### Browser session
+
+When you sign in through the web app, `/api/auth/sign-in` sets a signed cookie. All subsequent browser requests authenticate with that cookie automatically. You do not need to manage tokens manually when using the web UI.
+
+### Bearer token
+
+The CLI, MCP server, and direct API calls authenticate with a JWT issued by `action-platform login`. Pass the token in the `Authorization` header on every request:
+
+```bash
+curl -H "Authorization: Bearer $AP_TOKEN" https://platform.example.com/api/v1/apps
+```
+
+Token permissions are governed by three factors:
+
+- **Role** — what you are allowed to do in the organization (`owner`, `admin`, `deployer`, `developer`, `viewer`)
+- **Scope** — what the token is authorized to do on your behalf (`read`, `write`, `release`, `admin`)
+- **Reach** — which organizations, projects, or apps the token can touch
+
+A scope never widens a role: a `developer` with a `release`-scoped token still cannot cut a release.
+
+## Versioning
+
+Each Hub component ships independently and carries its own version. Before a major upgrade, check version compatibility:
+
+```bash
+GET /api/version
+```
+
+**Response**
+
+```json
+{
+  "version": "1.4.2",
+  "api": "api/1.4.2"
+}
+```
+
+The `version` field is the platform version; `api` is the API component version. If the web app and API versions diverge significantly, consult the upgrade notes before proceeding.
+
+## Errors
+
+Hub returns standard HTTP status codes. Errors from application logic carry a JSON body with a `detail` field containing a user-readable message.
+
+| Status | Meaning |
+|--------|---------|
+| `400` | `ActionPlatformError` — the operation failed for a user-addressable reason; `detail` explains what to fix |
+| `401` | Unauthenticated or invalid credentials (`unauthenticated`, `invalid_credentials`) |
+| `403` | Forbidden — the response names the missing permission (e.g. `app.release`) |
+| `404` | Resource not found |
+| `409` | Conflict — resource already exists (`exists`) |
+| `410` | Gone — resource has been removed |
+| `422` | `{"code": "needs_install"}` — the repository has no `platform.toml`; run install first |
+| `429` | Rate limit exceeded (10 sign-in attempts per minute per IP) |
+| `500` | Unexpected error — reported to Sentry if `AP_SENTRY_DSN` is configured |
+
+All error responses share the shape `{"detail": "…", "error": "…", "error_description": "…"}`.
+
+## Async jobs
+
+Long-running operations — `sync`, `release`, `deploy`, and `push` — can run asynchronously. Add either header to your request:
+
+```
+Prefer: respond-async
+```
+
+```
+X-Async: 1
+```
+
+Hub responds immediately with `202 Accepted`:
+
+```json
+{
+  "job": "job_01hx…",
+  "status": "queued",
+  "poll": "/api/v1/jobs/job_01hx…"
+}
+```
+
+A background worker picks up the job and runs it with the same credentials and identity as the inline call would have used.
+
+### Polling for status
+
+```
+GET /api/v1/jobs/{id}
+```
+
+<ResponseField name="status" type="string">
+  Job lifecycle state: `queued` → `running` → `done` | `failed`
+</ResponseField>
+
+<ResponseField name="attempts" type="integer">
+  Number of execution attempts. Failures retry up to three times with backoff. A job whose worker disappears returns to the queue after 30 minutes.
+</ResponseField>
+
+<ResponseField name="result" type="object">
+  The same response body the inline call would have returned. Present only when `status` is `done`.
+</ResponseField>
+
+<ResponseField name="error" type="string">
+  Error detail. Present only when `status` is `failed`.
+</ResponseField>
+
+### List jobs for an app
+
+```
+GET /api/v1/jobs?app=<registry-id>
+```
+
+Returns the last 20 jobs for the given app. If you submit a second async `sync` for the same app while one is already running, Hub returns the live job rather than creating a duplicate.
+
+<Note>
+  `GET /api/version`, `GET /docs`, and `GET /openapi.json` are public and require no authentication. Every other route requires a valid session or Bearer token.
+</Note>

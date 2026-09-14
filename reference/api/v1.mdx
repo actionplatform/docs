@@ -1,0 +1,171 @@
+---
+title: "Hub API /v1 Routes: Organizations and App Projects"
+sidebarTitle: "/v1 Routes"
+description: "Reference for /api/v1/* — the authenticated gate used by the web app, CLI, and MCP: organizations, projects, teams, hosts, and app routes."
+---
+
+`/api/v1/*` is the user-facing API gate. Every request that arrives here is identified — a JWT from `action-platform login`, a session token, or a browser cookie — and then checked against three constraints: the caller's **role** in the organization, the token's **scope**, and the token's **reach** (which organizations, projects, or apps it may touch). Only when all three agree does the gate proxy the call to the workspace API.
+
+The web app, CLI, and MCP remote mode all route through `/api/v1`.
+
+## Authentication
+
+Pass your token as a Bearer header on every request:
+
+```bash
+Authorization: Bearer <token>
+```
+
+For tokens that span multiple organizations, specify which organization a given call should act in:
+
+```
+X-Organization: <id or slug>
+```
+
+You need `X-Organization` on organization-level routes when your token's reach is set to "all organizations." App-level routes resolve the organization automatically from the app's registry entry.
+
+## Read routes (any member)
+
+Any authenticated caller with at least the `viewer` role (`read` scope) can call these routes:
+
+| Route | Returns |
+|-------|---------|
+| `GET /api/v1/me` | Your user record and active organization |
+| `GET /api/v1/access` | The full rule table: roles with labels and permissions, all scopes and their defaults — what the web app displays to build its permission UI |
+| `GET /api/v1/organizations` | Organizations you belong to, with your role in each |
+| `GET /api/v1/projects` | Projects you can see, with their apps; spans all organizations for a multi-org token |
+| `GET /api/v1/teams` | Teams in the active organization |
+| `GET /api/v1/members` | Members of the active organization |
+| `GET /api/v1/hosts` | Source hosts configured in the organization |
+| `GET /api/v1/template-sources` | Custom template repositories added to the organization |
+| `GET /api/v1/settings/git-author` | The organization's commit identity (name and email used for platform commits) |
+| `GET /api/v1/oauth/apps` | OAuth apps registered with the organization |
+| `GET /api/v1/jobs` | Jobs for the caller (filter by `?app=<id>` for a specific app) |
+
+## Project management
+
+Requires the `project.manage` permission (`admin` scope). Owners and admins hold this permission by default.
+
+| Route | Action |
+|-------|--------|
+| `POST /api/v1/projects` | Create a new project |
+| `DELETE /api/v1/projects/{id}` | Delete a project and remove its workspaces |
+| `POST /api/v1/projects/{id}/apps` | Add an existing repository to a project |
+| `POST /api/v1/projects/{id}/apps/init` | Generate a new app from a template inside this project |
+| `DELETE /api/v1/projects/{id}/apps/{app_id}` | Remove an app from a project |
+
+**`POST /api/v1/projects/{id}/apps`**
+
+<ParamField body="url" type="string" required>
+  Repository URL to register.
+</ParamField>
+
+<ParamField body="install" type="boolean">
+  When `true`, Hub installs `platform.toml` and CI files into the repository.
+</ParamField>
+
+**`POST /api/v1/projects/{id}/apps/init`**
+
+Accepts the same body as [`POST /api/apps/init`](/reference/api/apps#post-apiappsinit) plus:
+
+<ParamField body="source_host_id" type="string" required>
+  The source host to create the repository on.
+</ParamField>
+
+<ParamField body="template_source" type="string">
+  Custom template source name. If provided, Hub merges that source into the template matrix for this request.
+</ParamField>
+
+## Organization management
+
+Requires the `org.manage` permission (`admin` scope). Only owners and admins hold this permission.
+
+### Teams
+
+| Route | Action |
+|-------|--------|
+| `POST /api/v1/teams` | Create a team |
+| `PUT /api/v1/teams/{id}` | Update team name or description |
+| `DELETE /api/v1/teams/{id}` | Delete a team |
+| `POST /api/v1/teams/members` | Add a member to a team |
+| `DELETE /api/v1/teams/{id}/members/{user}` | Remove a member from a team |
+
+### Members and invitations
+
+| Route | Action |
+|-------|--------|
+| `POST /api/v1/members/role` | Change a member's role |
+| `DELETE /api/v1/members/{user}` | Remove a member (the last owner cannot be removed) |
+| `GET /api/v1/invitations` | List pending invitations |
+| `POST /api/v1/invitations` | Send an invitation |
+| `DELETE /api/v1/invitations/{id}` | Cancel an invitation |
+
+### Source hosts
+
+| Route | Action |
+|-------|--------|
+| `POST /api/v1/hosts` | Register a new source host |
+| `DELETE /api/v1/hosts/{id}` | Remove a source host |
+| `PUT /api/v1/hosts/{id}/token` | Update the host's access token |
+| `PUT /api/v1/hosts/{id}/owner` | Reassign the host's owner |
+| `GET /api/v1/hosts/{id}/access` | Check what the connected account can create — GitHub App installations and permissions, GitLab groups, Bitbucket workspaces — and surface any problems |
+
+### OAuth apps and settings
+
+| Route | Action |
+|-------|--------|
+| `PUT /api/v1/oauth/apps/{provider}` | Register or update an OAuth app for a provider |
+| `DELETE /api/v1/oauth/apps/{provider}` | Remove an OAuth app |
+| `POST /api/v1/oauth/{provider}/start` | Begin an OAuth flow — returns the provider's authorization URL with a signed state |
+| `POST /api/v1/oauth/{provider}/callback` | Exchange the authorization code for a token and store the host |
+| `DELETE /api/v1/oauth/{provider}/hosts/{login}` | Disconnect an OAuth-connected host |
+| `POST /api/v1/oauth/github/manifest` | Start a GitHub App manifest flow |
+| `POST /api/v1/oauth/github/manifest/callback` | Complete a GitHub App manifest flow |
+| `POST /api/v1/oauth/github/install` | Register a GitHub App installation |
+| `PUT /api/v1/settings/git-author` | Update the organization's commit identity |
+| `POST /api/v1/template-sources` | Add a custom template repository |
+| `DELETE /api/v1/template-sources/{id}` | Remove a custom template repository |
+
+## App routes
+
+All workspace endpoints from [`/api/apps/{id}/*`](/reference/api/apps) are available through the gate at `/api/v1/apps/{id}/*` (and at `/api/v1/projects/{id}/apps/{app_id}/*`). The gate adds:
+
+- **Role and scope enforcement** — the caller's role in the app's organization is checked against the required permission for each route
+- **Reach enforcement** — tokens scoped to a project or app can only reach their assigned resources
+- **Automatic credential injection** — the source host's credentials are decrypted and injected into every request that needs to talk to the code host, with OAuth tokens refreshed when expired
+- **Commit identity injection** — the organization's git author name and email are attached to every call that may produce a commit
+- **Post-action sync** — after `sync`, `release`, `push`, `branches`, `checkout`, `pull-request`, and `commit`, Hub copies new releases and pull requests from the code host into the database
+
+## Jobs
+
+Async jobs created through `/api/v1/*` are tracked here.
+
+### `GET /api/v1/jobs/{id}`
+
+Returns the current state of a job.
+
+<ResponseField name="status" type="string">
+  Lifecycle state: `queued` → `running` → `done` | `failed`
+</ResponseField>
+
+<ResponseField name="attempts" type="integer">
+  How many times the worker has attempted this job. Hub retries failed jobs up to three times with backoff. A job whose worker disappears returns to the queue after 30 minutes.
+</ResponseField>
+
+<ResponseField name="result" type="object">
+  The response body the inline call would have returned. Present only when `status` is `done`.
+</ResponseField>
+
+<ResponseField name="error" type="string">
+  Error detail. Present only when `status` is `failed`.
+</ResponseField>
+
+---
+
+### `GET /api/v1/jobs?app=<id>`
+
+Lists the last 20 jobs for a given app registry ID. Useful for monitoring release and deploy history.
+
+<Note>
+  A token scoped to a single project or app is refused on all organization management routes. The `403` response names the specific permission the token is missing (e.g. `org.manage`). Widen the token's scope or use an organization-level token for those operations.
+</Note>
